@@ -16,6 +16,7 @@ try { config = JSON.parse(configRes.body); } catch { /* reported below */ }
 check('接口', configRes.status === 200, `GET /api/config → ${configRes.status}`, configRes.status === 403 ? '访问地址和生产域名不一致：设 PAI_PUBLIC_ORIGIN 后重新部署' : configRes.status === 503 ? '服务端没启动：检查模型三个变量，以及 owner.config.json 是否合法' : '检查部署日志');
 check('模型', config.mode === 'real' && config.configured === true, `mode=${config.mode ?? '?'} configured=${config.configured ?? '?'}`, '检查 PAI_API_BASE_URL（https）、PAI_MODEL、PAI_API_KEY');
 check('本人回复（Supabase）', config.handoff === true, `handoff=${config.handoff ?? '?'}`, '填 PAI_SUPABASE_URL 和 PAI_SUPABASE_SECRET_KEY，运行 npm run setup:sql 的输出，再重新部署');
+if (config.handoff) { const r = await get('/api/replies?conversation=echome-setup-check'); check('本人回复的数据表', r.status === 200, `GET /api/replies → ${r.status}`, '在 Supabase SQL Editor 运行 npm run setup:sql 的输出（需要 pai_owner_messages 表）'); }
 check('访客提醒（webhook）', config.contact === true, `contact=${config.contact ?? '?'}`, '填 PAI_NOTIFY_WEBHOOK_URL 和 PAI_NOTIFY_WEBHOOK_KEY 后重新部署');
 
 if (flag('--send-test') && config.contact) {
