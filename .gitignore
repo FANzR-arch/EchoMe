@@ -1,0 +1,33 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.env*
+!.env.example
+
+.local-data/
+.workbench-test-data/
+
+/api.txt
+
+# Generated local browser captures may include owner drafts or conversation content.
+/docs/previews/*.png
+
+# Reviewed cloud release generated locally; uploaded deliberately, not automatically committed.
+/deploy/knowledge-release.json
+.vercel/
+
+.vercel
+.env*
+
+# Private owner overlay: your real identity, knowledge and deploy config stay local.
+/owner.config.local.json
+/knowledge.local/
+/vercel.local.json
+
+# Personal verification logs and acceptance runs for your own deployment.
+/docs/private/
+
+# Checks tied to your own portfolio site, kept local.
+/scripts/private/

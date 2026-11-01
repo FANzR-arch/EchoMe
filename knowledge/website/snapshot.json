@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "origin": "https://example.com",
+  "syncedAt": "2026-11-01T00:00:00.000Z",
+  "revision": "example",
+  "documents": [
+    {
+      "id": "profile",
+      "title": "林夏 个人介绍",
+      "urls": [
+        "https://example.com/"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "林夏（Lin）\n你好，我是林夏，一名独立设计师和前端开发者，关注小而好用的工具和清晰的界面。\n这里是示例个人站：记录项目、文章和一些正在进行的想法。\n本页内容为开源模板的虚构示例，请替换为你自己的资料。",
+      "file": "content/site/home.json"
+    },
+    {
+      "id": "profile-en",
+      "title": "About Lin",
+      "urls": [
+        "https://example.com/en/"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "Lin Xia\nHi, I’m Lin — an independent designer and front-end developer who likes small, useful tools and clear interfaces.\nThis is a sample personal site for the open-source template. Replace it with your own content.",
+      "file": "content/site/home.en.json"
+    },
+    {
+      "id": "contact",
+      "title": "公开联系渠道 / Public contact",
+      "urls": [
+        "https://example.com/",
+        "https://example.com/contact"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "公开邮箱：hello@example.com\n公开联系页：https://example.com/contact",
+      "file": "content/site/home.shared.json"
+    },
+    {
+      "id": "project:pocket-timer",
+      "title": "口袋计时 Pocket Timer",
+      "urls": [
+        "https://example.com/projects/pocket-timer"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "口袋计时 Pocket Timer\n一个帮助专注工作的极简番茄钟网页应用。\n角色：林夏负责交互设计和前端开发。\n特点：离线可用，数据只保存在浏览器本地。",
+      "file": "content/projects/pocket-timer.md"
+    },
+    {
+      "id": "project:paper-notes",
+      "title": "纸片笔记 Paper Notes",
+      "urls": [
+        "https://example.com/projects/paper-notes"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "纸片笔记 Paper Notes\n一个用卡片整理读书摘录的小工具。\n角色：林夏独立完成设计与开发。\n特点：支持 Markdown 导出。",
+      "file": "content/projects/paper-notes.md"
+    },
+    {
+      "id": "projects-index",
+      "title": "作品档案 / Projects",
+      "urls": [
+        "https://example.com/projects"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "作品档案\n- 口袋计时 Pocket Timer：极简番茄钟。\n- 纸片笔记 Paper Notes：读书摘录卡片。",
+      "file": "content/projects/index.json"
+    },
+    {
+      "id": "article:small-tools",
+      "title": "为什么我喜欢做小工具",
+      "urls": [
+        "https://example.com/blog/small-tools"
+      ],
+      "kind": "website",
+      "updated": "2026-09-01",
+      "summary": "",
+      "text": "为什么我喜欢做小工具\n小工具的边界清楚，能在一个周末做完并真正用起来。文章讨论了如何砍掉功能、保留核心体验。",
+      "file": "content/blog/small-tools.md"
+    },
+    {
+      "id": "articles-index",
+      "title": "文章 / Writing",
+      "urls": [
+        "https://example.com/blog"
+      ],
+      "kind": "website",
+      "updated": "",
+      "summary": "",
+      "text": "文章列表\n- 为什么我喜欢做小工具（2026-09-01）",
+      "file": "content/blog/index.json"
+    }
+  ],
+  "skipped": []
+}

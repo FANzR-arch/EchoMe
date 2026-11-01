@@ -1,0 +1,11 @@
+.env*
+api.txt
+.local-data
+.workbench-test-data
+test-results
+playwright-report
+docs/previews
+.git
+owner.config.local.json
+knowledge.local
+vercel.local.json

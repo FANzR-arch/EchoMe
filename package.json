@@ -1,0 +1,58 @@
+{
+  "name": "personal-ai",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:chat": "vite --mode chat --port 5174",
+    "dev:admin": "vite --mode admin --port 5175",
+    "build": "npm run check && npm run build:chat && npm run build:admin",
+    "build:chat": "vite build --mode chat",
+    "build:admin": "vite build --mode admin",
+    "build:demo": "vite build",
+    "preview:chat": "vite preview --mode chat --port 4174",
+    "preview:admin": "vite preview --mode admin --port 4175",
+    "check": "tsc -b",
+    "preview": "npm run preview:chat",
+    "test": "playwright test",
+    "test:server": "node --experimental-strip-types --import ./server/test-setup.ts --test server/*.test.ts",
+    "knowledge:sync": "node --env-file-if-exists=.env.local scripts/sync-knowledge.mjs",
+    "knowledge:check": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/check-knowledge.ts",
+    "test:knowledge": "node --experimental-strip-types --import ./server/test-setup.ts --test server/knowledge.test.ts scripts/sync-knowledge.test.mjs",
+    "knowledge:export": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/export-cloud-knowledge.ts",
+    "build:cloud": "node scripts/check-cloud-release.mjs && npm run check && npm run build:chat",
+    "deploy:vercel": "node --env-file-if-exists=.env.local scripts/prepare-vercel.mjs && vercel deploy --prod --local-config vercel.local.json"
+  },
+  "dependencies": {
+    "@assistant-ui/react": "0.15.20",
+    "@base-ui/react": "1.8.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "idb": "8.0.3",
+    "lucide-react": "1.46.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "7.18.4",
+    "remark-gfm": "^4.0.1",
+    "sonner": "2.0.8",
+    "tailwind-merge": "3.7.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.20.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "license": "MIT",
+  "description": "Embeddable personal AI assistant for your own website: grounded answers from your published content, signed history and prompt-injection guards."
+}

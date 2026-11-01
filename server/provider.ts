@@ -1,0 +1,3 @@
+/** Provider-specific server options, never selected by the browser. */
+export function providerOptions(baseUrl:string,mode:'direct'|'thinking'='direct'){return new URL(baseUrl).hostname==='api.deepseek.com'?{thinking:{type:mode==='thinking'?'enabled':'disabled'},...(mode==='thinking'?{reasoning_effort:'low'}:{})}:{};}
+export function usageNumbers(value:Record<string,unknown>|undefined){if(!value)return undefined;return Object.fromEntries(['prompt_tokens','completion_tokens','total_tokens','prompt_cache_hit_tokens','prompt_cache_miss_tokens'].filter(k=>Number.isSafeInteger(value[k])&&Number(value[k])>=0).map(k=>[k,Number(value[k])]));}

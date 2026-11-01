@@ -1,0 +1,63 @@
+/* Portfolio embeds share the host title, close control, theme and language.
+   Chat tools stay visible; only the message viewport scrolls. */
+html[data-portfolio] {
+  --foreground:oklch(20% .014 75);
+  --background:oklch(97.5% .003 255);
+  --card:oklch(97.5% .003 255);
+  --primary:var(--foreground);
+  --primary-foreground:var(--background);
+  --border:color-mix(in srgb,var(--foreground) 13%,transparent);
+  --ring:color-mix(in srgb,var(--foreground) 35%,transparent);
+  --muted-foreground:color-mix(in srgb,var(--foreground) 65%,transparent);
+}
+html.dark[data-portfolio] { --foreground:oklch(93% .01 85); --background:oklch(16% .012 72); --card:var(--background); }
+html[data-portfolio], html[data-portfolio] body, html[data-portfolio] #root, html[data-portfolio] .chat-page { background:transparent; font-family:"Avenir Next","Segoe UI","Noto Sans CJK SC","PingFang SC","Microsoft YaHei",sans-serif; }
+html[data-portfolio] .chat-page { max-width:none; }
+html[data-portfolio] .chat-header { display:none; }
+html[data-portfolio][data-host-active='false'] .chat-page { visibility:hidden; pointer-events:none; }
+html[data-portfolio] .chat-subheader { display:flex; flex:none; flex-wrap:wrap; gap:4px 8px; margin:0 24px; padding:0 0 12px; border-bottom:1px solid var(--border); }
+html[data-portfolio] .chat-subheader .toolbar { display:flex; gap:4px; }
+html[data-portfolio] .chat-subheader button { height:44px; padding-inline:10px; font-size:12px; color:var(--foreground); border-radius:10px; }
+html[data-portfolio] .thread-viewport { padding:12px 24px; scrollbar-gutter:stable; }
+html[data-portfolio] .thread-body { max-width:760px; }
+html[data-portfolio] .assistant-message { line-height:1.9; }
+html[data-portfolio] .assistant-label { display:none; }
+html[data-portfolio] .message-actions { opacity:1; flex-wrap:wrap; gap:4px; }
+html[data-portfolio] .message-actions > button { display:flex; justify-content:center; align-items:center; gap:6px; width:auto; min-width:44px; height:44px; padding:0 10px; font-size:12px; border-radius:10px; }
+html[data-portfolio] .composer-area { flex:none; max-width:812px; padding:12px 24px max(10px,env(safe-area-inset-bottom)); }
+html[data-portfolio] .composer { padding:14px 16px 10px; border:1px solid var(--border); border-radius:18px; background:color-mix(in srgb,var(--card) 90%,transparent); box-shadow:0 4px 18px #14241804; }
+html[data-portfolio] .composer:focus-within { border-color:var(--ring); }
+html[data-portfolio] .composer textarea { min-height:48px; max-height:120px; font-family:inherit; font-size:16px; }
+html[data-portfolio] .composer-bottom { position:static; display:flex; justify-content:space-between; gap:12px; margin-top:8px; }
+html[data-portfolio] .composer-bottom > span { display:block; font-size:11px; line-height:1.6; }
+html[data-portfolio] .send-button { flex:none; width:44px; height:44px; }
+html[data-portfolio] .chat-disclosure { display:block; font-size:11px; line-height:1.6; margin:10px 4px 0; text-wrap:pretty; }
+html[data-portfolio] .scroll-bottom { width:40px; height:40px; top:-36px; }
+html[data-portfolio] [data-slot='dialog-content'] { max-height:calc(100dvh - 24px); overflow-y:auto; padding:24px; border-radius:18px; }
+html[data-portfolio] [data-slot='dialog-title'] { padding-right:28px; line-height:1.5; }
+html[data-portfolio] [data-slot='dialog-close'] { min-width:40px; min-height:40px; }
+html[data-portfolio='immersive'] .host-greeting { margin:clamp(24px,7vh,72px) 0 32px; font-size:clamp(22px,3.2vw,30px); line-height:1.8; letter-spacing:-.02em; white-space:pre-line; min-height:3.6em; }
+html[data-portfolio='immersive'] .host-greeting p { margin:0; }
+.panel-welcome { margin:auto 0; padding:24px 0 40px; }
+.panel-welcome h1 { font-size:26px; font-weight:400; letter-spacing:-.04em; line-height:1.5; }
+html[data-portfolio='panel'] .user-message { background:var(--visitor-bubble, #eeeeef); font-size:14px; border-radius:16px; }
+.host-recovery { font-size:12px; padding:8px 20px; color:var(--muted-foreground); }
+.host-stopped { font-size:12px; color:var(--muted-foreground); }
+@media(max-width:600px) {
+  html[data-portfolio] .chat-subheader { margin-inline:16px; }
+  html[data-portfolio] .thread-viewport { padding-inline:16px; }
+  html[data-portfolio] .composer-area { padding-inline:16px; }
+  html[data-portfolio] .chat-subheader button { padding-inline:8px; }
+}
+@media(prefers-reduced-motion:reduce) { html[data-portfolio] * { animation:none !important; } }
+@media(any-hover:hover) and (any-pointer:fine) {
+  html[data-host-cursor='true'], html[data-host-cursor='true'] * { cursor:none !important; }
+}
+
+/* Hide only the scroll chrome; wheel, touch and keyboard scrolling stay native. */
+.thread-viewport { scrollbar-width:none; -ms-overflow-style:none; }
+.thread-viewport::-webkit-scrollbar { display:none; width:0; height:0; }
+html[data-portfolio] .thread-viewport { scrollbar-gutter:auto; }
+
+/* Both portfolio surfaces inherit the same warm site palette. */
+html[data-portfolio="panel"] .user-message { background:color-mix(in oklab,var(--foreground) 7%,var(--background)); }

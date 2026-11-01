@@ -1,0 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import { getStore, hash } from '../server/workbench-store.ts';
+import { listAssets } from '../server/workbench-api.ts';
+import { launchProposal } from '../server/workbench-cli.ts';
+const store=getStore();
+const before=listAssets(store).find(a=>a.key==='doc:profile');
+if(!before)throw Error('Profile not found');
+const proposal={id:randomUUID(),target:before.key,base:hash(before),before,content:before.content,instruction:'请仅使用现有个人介绍中的事实，整理成两段适合主人的 AI 助手引用的第三人称介绍。使用主人的称呼和第三人称，不冒充本人。不增加经历、头衔、作品、观点或联系方式。保持中文，简洁自然。此次只是工作台集成验证的待审核提案。',status:'running',created:new Date().toISOString()};
+store.saveProposal(proposal);
+launchProposal(store,proposal);
+console.log('Proposal ID: '+proposal.id+'; real local Codex CLI started.');
+const timer=setInterval(()=>{const p=store.proposal(proposal.id);if(p?.status!=='running'){console.log(JSON.stringify({id:p?.id,status:p?.status,error:p?.error,content:p?.content},null,2));clearInterval(timer);store.close();if(p?.status!=='ready')process.exitCode=1;}},1000);
