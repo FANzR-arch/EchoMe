@@ -4,7 +4,7 @@ import { publicContactUrl } from './response-style.ts';
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { getStore } from "./workbench-store.ts";
 import { getSystemRules } from "./prompts.ts";
-import { buildKnowledge, readKnowledge, readKnowledgeTool } from "./knowledge.ts";
+import { buildKnowledge, readKnowledge, readKnowledgeTool, loadDocuments, type Document } from "./knowledge.ts";
 import { readCompletion } from "./completion.ts";
 import { capability } from "./capability.ts";
 import { classifyIntent,clarificationReply,routePolicy,type Routing } from "./intent.ts";
@@ -13,7 +13,7 @@ import { hash } from "./workbench-store.ts";
 import { historySigner, historySecret, neutralize, visitorReminder, leakCoverage, leakThreshold, guardedReply, unverifiedReply } from "./guard.ts";
 import { guardRules } from "./prompts.ts";
 import { responseStyle } from "./response-style.ts";
-import { notifyReason, conversationId, type HandoffStore, type Reason } from "./handoff.ts";
+import { notifyReason, conversationId, type HandoffStore, type Reason, type SavedAnswer } from "./handoff.ts";
 import { createMcp, tokenMatches } from "./mcp.ts";
 import { owner } from "./owner.ts";
 export const limits = { input: 2000, context: 36000, messages: 24, output: 600, perMinute: 6, concurrent: 2, daily: 30, timeoutMs: 45000, idleMs: 12000 };
@@ -23,6 +23,9 @@ export type Config = { mode: string; baseUrl: string; model: string; key: string
   handoff?:HandoffStore; notify?:(notice:{reason:Reason;conversation:string;visitor:string;assistant?:string;contact?:string})=>Promise<boolean>; mcpToken?:string };
 /** Prefix the visitor sees on the owner's own words; it is also what the model reads back as history. */
 export const ownerLabel=(locale:string)=>locale==='en'?`[${owner().name.en}, in person] `:`【${owner().name.zh}本人回复】`;
+/** A saved owner answer as a detail document: listed in the catalog, read in full on demand. */
+export const savedAnswerDocument=(a:SavedAnswer):Document=>({id:'saved:'+a.id,title:'主人亲自回答过：'+a.question.slice(0,160),kind:'personal',urls:[],updated:a.created.slice(0,10),file:'saved-answers',tier:'detail',summary:a.answer.slice(0,100),
+  text:`问：${a.question}\n答（${owner().name.zh}本人确认，${a.created.slice(0,10)}）：${a.answer}`});
 async function readJson(req:IncomingMessage,max=65536){
   let raw='',bytes=0;req.setEncoding('utf8');
   for await(const chunk of req){bytes+=Buffer.byteLength(chunk);if(bytes>max)throw fail('INPUT_LIMIT');raw+=chunk;}
@@ -49,6 +52,14 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
   const signer = historySigner(historySecret(config.historySecret, config.key));
   const mcp = config.handoff && config.mcpToken ? createMcp(config.handoff) : undefined;
   let handoffs: number[] = [];
+  // Saved answers change rarely; a short cache spares a database call per question. Failures fall back to the last list.
+  let saved: { at: number; docs: Document[] } | undefined;
+  const savedDocuments = async () => {
+    if (!config.handoff) return [];
+    if (saved && Date.now() - saved.at < 60000) return saved.docs;
+    try { saved = { at: Date.now(), docs: (await config.handoff.savedAnswers(30)).map(savedAnswerDocument) }; } catch { /* Keep answering without them. */ }
+    return saved?.docs ?? [];
+  };
   const configured = (() => { try { const u = new URL(config.baseUrl); return u.protocol === "https:" && !u.username && !u.password && !u.search && !u.hash && !!config.model && !!config.key; } catch { return false; } })();
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (!req.url?.startsWith("/api/")) return next();
@@ -69,6 +80,7 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       try {
         const body = await readJson(req);
         const out = Array.isArray(body) ? (await Promise.all(body.map(mcp))).filter(Boolean) : await mcp(body);
+        saved = undefined; // A save or forget shows up in the next answer.
         if (!out || (Array.isArray(out) && !out.length)) { res.writeHead(202); res.end(); return; }
         return json(200, out);
       } catch { return json(400, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }); }
@@ -145,7 +157,11 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       }
       const route=routePolicy()[routing.intent];
       let knowledge;
-      try { knowledge = buildKnowledge(messages, policy.context,undefined,config.intentRouting===false||route.knowledge); } catch (error) { if (error instanceof Error && error.message === "CONTEXT_LIMIT") throw error; throw fail("KNOWLEDGE_UNAVAILABLE"); }
+      // Fewer saved answers rather than a failed reply when the catalog would overflow the context.
+      const includeCatalog=config.intentRouting===false||route.knowledge;
+      try { let extra=includeCatalog?await savedDocuments():[];const base=loadDocuments();
+        for(;;){try{knowledge=buildKnowledge(messages,policy.context,[...base,...extra],includeCatalog);break;}catch(e){if(!(e instanceof Error&&e.message==='CONTEXT_LIMIT')||!extra.length)throw e;extra=extra.slice(0,Math.floor(extra.length/2));}}
+      } catch (error) { if (error instanceof Error && error.message === "CONTEXT_LIMIT") throw error; throw fail("KNOWLEDGE_UNAVAILABLE"); }
       const sources = [...knowledge.sources,publicContactUrl()];
       if (controller.signal.aborted) throw fail("TIMEOUT");
       Object.assign(audit,{selected:knowledge.selected,catalog:knowledge.catalog,system:knowledge.prompt});

@@ -4,6 +4,9 @@ import type { WorkbenchStore } from './workbench-store.ts';
 
 export type OwnerMessage = { id: string; conversation: string; created: string; role: 'owner' | 'visitor_note'; text: string };
 export type Turn = { role: 'visitor' | 'assistant' | 'owner' | 'visitor_note'; text: string; created: string };
+/** An answer the owner gave once, kept so the assistant can reuse it for similar questions. */
+export type SavedAnswer = { id: string; created: string; question: string; answer: string };
+export const savedAnswerLimits = { question: 500, answer: 2000, count: 100 };
 export type ConversationSummary = { conversation: string; lastActive: string; lastQuestion: string; turns: number; ownerReplies: number };
 export interface HandoffStore {
   add(conversation: string, role: OwnerMessage['role'], text: string): Promise<OwnerMessage>;
@@ -12,6 +15,9 @@ export interface HandoffStore {
   repliesSince(since: string): Promise<number>;
   recent(limit: number): Promise<ConversationSummary[]>;
   transcript(conversation: string): Promise<Turn[] | undefined>;
+  saveAnswer(question: string, answer: string, conversation?: string): Promise<SavedAnswer>;
+  savedAnswers(limit: number): Promise<SavedAnswer[]>;
+  forgetAnswer(id: string): Promise<boolean>;
 }
 
 export const conversationId = (v: unknown): v is string => typeof v === 'string' && /^[a-zA-Z0-9_-]{8,80}$/.test(v);
@@ -43,7 +49,17 @@ export function summarize(runs: Run[], notes: OwnerMessage[], limit: number): Co
 /** Local SQLite twin of the cloud tables, used by the dev servers. */
 export class LocalHandoff implements HandoffStore {
   private store: WorkbenchStore;
-  constructor(store: WorkbenchStore) { this.store = store; store.db.exec('CREATE TABLE IF NOT EXISTS owner_messages (id TEXT PRIMARY KEY, conversation TEXT NOT NULL, created TEXT NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL)'); }
+  constructor(store: WorkbenchStore) {
+    this.store = store;
+    store.db.exec('CREATE TABLE IF NOT EXISTS owner_messages (id TEXT PRIMARY KEY, conversation TEXT NOT NULL, created TEXT NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL); CREATE TABLE IF NOT EXISTS saved_answers (id TEXT PRIMARY KEY, created TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, conversation TEXT)');
+  }
+  async saveAnswer(question: string, answer: string, conversation?: string) {
+    const a: SavedAnswer = { id: randomUUID(), created: new Date().toISOString(), question, answer };
+    this.store.db.prepare('INSERT INTO saved_answers VALUES (?,?,?,?,?)').run(a.id, a.created, a.question, a.answer, conversation ?? null);
+    return a;
+  }
+  async savedAnswers(limit: number) { return this.store.db.prepare('SELECT id,created,question,answer FROM saved_answers ORDER BY created DESC LIMIT ?').all(limit) as SavedAnswer[]; }
+  async forgetAnswer(id: string) { return this.store.db.prepare('DELETE FROM saved_answers WHERE id=?').run(id).changes > 0; }
   async add(conversation: string, role: OwnerMessage['role'], text: string) {
     const m: OwnerMessage = { id: randomUUID(), conversation, created: new Date().toISOString(), role, text };
     this.store.db.prepare('INSERT INTO owner_messages VALUES (?,?,?,?,?)').run(m.id, m.conversation, m.created, m.role, m.text);
@@ -64,12 +80,14 @@ export class LocalHandoff implements HandoffStore {
 
 // Notifications ----------------------------------------------------------
 
-export type Reason = 'asked_for_human' | 'contact_left' | 'collaboration' | 'contact_request' | 'unanswered';
+export type Reason = 'asked_for_human' | 'contact_left' | 'consultation' | 'collaboration' | 'contact_request' | 'unanswered';
 const contactPattern = /[\w.+-]+@[\w-]+\.[\w.]+|(?:\+?\d[\d -]{7,}\d)|(?:微信|wechat|vx|wx)[:：\s]*[a-zA-Z][\w-]{4,}/i;
 /** Only exchanges where a human reply adds value; everything else stays in the archive. */
 export function notifyReason(intent: string, question: string, answer: string): Reason | undefined {
   if (/(找|联系|转|让)(一下)?(你|他|她|主人)?的?(本人|真人)|人工客服|转人工|real person|talk to (a )?human|speak (to|with) (him|her|them|the owner) (directly|in person)/i.test(question)) return 'asked_for_human';
   if (contactPattern.test(question)) return 'contact_left';
+  // Wants to go further with the owner: a call, a meeting, a deeper consultation.
+  if (/进一步|详细(聊|谈|咨询|了解)|深入(聊|谈|咨询)|(想|希望|可以|能)(约|预约|安排)|约(个|一下)?(时间|电话|会议)|打(个)?电话|语音|视频(会议|通话)|面谈|见(个)?面|一对一|付费咨询|咨询(一下|服务)|book (a )?(call|meeting)|schedule (a )?(call|meeting|chat)|follow[- ]?up|consult(ation|ing)?|hop on a call|set up a (call|meeting)/i.test(question)) return 'consultation';
   if (/合作|报价|价格|多少钱|收费|档期|外包|约稿|雇佣|招聘|hire|hiring|collaborat|quote|pricing|budget|commission|freelance/i.test(question)) return 'collaboration';
   if (intent === 'contact') return 'contact_request';
   if (/无法确认|没有这方面|资料里没有|没有相关|不确定|can['’]?t confirm|cannot confirm|don['’]?t have (that|this|any) information|not sure/i.test(answer)) return 'unanswered';

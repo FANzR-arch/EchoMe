@@ -1,5 +1,5 @@
 /** Supabase service-role REST client; used only by server functions and localhost admin. */
-import { summarize, runsToTurns, type HandoffStore, type OwnerMessage } from "./handoff.ts";
+import { summarize, runsToTurns, type HandoffStore, type OwnerMessage, type SavedAnswer } from "./handoff.ts";
 export function cloudConfigured(){return !!process.env.PAI_SUPABASE_URL&&!!process.env.PAI_SUPABASE_SECRET_KEY;}
 export class CloudStore {
   private base:string;private key:string;private fetcher:typeof fetch;
@@ -47,6 +47,9 @@ export class CloudHandoff implements HandoffStore {
     const [runs,notes]=await Promise.all([this.runs('&order=created.desc&limit=200'),this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&order=created.desc&limit=200')]);
     return summarize(runs,notes,limit);
   }
+  async saveAnswer(question:string,answer:string,conversation?:string):Promise<SavedAnswer>{return (await this.cloud.request('pai_saved_answers?select=id,created,question,answer','POST',{question,answer,conversation:conversation??null}))[0];}
+  async savedAnswers(limit:number):Promise<SavedAnswer[]>{return this.cloud.request('pai_saved_answers?select=id,created,question,answer&order=created.desc&limit='+Math.min(200,Math.max(1,limit)));}
+  async forgetAnswer(id:string){if(!/^[0-9a-f-]{36}$/i.test(id))return false;return (await this.cloud.request('pai_saved_answers?id=eq.'+id,'DELETE')).length>0;}
   async transcript(conversation:string){
     const c=encodeURIComponent(conversation);
     const [runs,notes]=await Promise.all([this.runs('&conversation=eq.'+c+'&order=created.asc&limit=100'),this.messages(conversation)]);

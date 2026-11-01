@@ -30,6 +30,7 @@ if (token) {
   const list = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
   let tools = []; try { tools = JSON.parse(list.body).result.tools.map(t => t.name); } catch { /* reported below */ }
   check('MCP 工具', init.status === 200 && tools.includes('reply_to_visitor'), `initialize → ${init.status}, tools=${tools.join(',') || '无'}`, init.status === 404 ? '口令不对、少于 24 位，或需要 Supabase；改完要重新部署' : '检查部署日志');
+  if (init.status === 200) { const r = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_saved_answers', arguments: { limit: 1 } } }); let ok = false; try { ok = JSON.parse(r.body).result.isError !== true; } catch { /* reported below */ } check('已保存回答的数据表', ok, `list_saved_answers → ${ok ? 'ok' : 'error'}`, '在 Supabase SQL Editor 运行 npm run setup:sql 的输出（需要 pai_saved_answers 表）'); }
 }
 
 if (flag('--json')) console.log(JSON.stringify({ site, ok: results.every(r => r.ok), results }, null, 2));

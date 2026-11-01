@@ -103,7 +103,7 @@ test('MCP: hidden without the right token, lists, reads and replies within limit
     assert.equal(init.result.protocolVersion, '2025-03-26'); assert.ok(init.result.capabilities.tools);
     assert.equal((await rpc(url, { jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202);
     const tools = (await (await rpc(url, { jsonrpc: '2.0', id: 2, method: 'tools/list' })).json()).result.tools.map((t: { name: string }) => t.name);
-    assert.deepEqual(tools, ['list_visitor_conversations', 'read_visitor_conversation', 'reply_to_visitor']);
+    assert.deepEqual(tools, ['list_visitor_conversations', 'read_visitor_conversation', 'reply_to_visitor', 'save_answer', 'list_saved_answers', 'forget_saved_answer']);
     const list = JSON.parse((await tool(url, 'list_visitor_conversations', {})).content[0].text);
     assert.match(list.note, /untrusted/); assert.equal(list.conversations[0].conversation, conv);
     const read = JSON.parse((await tool(url, 'read_visitor_conversation', { conversation: conv })).content[0].text);
@@ -125,5 +125,46 @@ test('MCP replies are rate limited per hour', async () => {
   for (let i = 0; i < 20; i++) await h.add(conv, 'owner', 'reply ' + i);
   await serve({ ...base, handoff: h, mcpToken: token }, answer('x'), async url => {
     assert.match((await tool(url, 'reply_to_visitor', { conversation: conv, text: 'one more' })).content[0].text, /limit/);
+  });
+});
+
+test('explicit wish for a follow-up consultation notifies the owner', () => {
+  for (const q of ['我想进一步咨询一下网站改版', '能约个时间聊聊吗', '方便打个电话吗', 'Could we book a call next week?'])
+    assert.equal(notifyReason('consultation', q, ''), 'consultation', q);
+  assert.equal(notifyReason('consultation', '有什么学习 AI 的建议', '可以先从…开始'), undefined);
+});
+
+test('MCP saves owner answers with a reply or on their own, lists and forgets them', async () => {
+  const h = store(); const token = 'x'.repeat(24);
+  await h.add(conv, 'visitor_note', '你们接海外项目吗？');
+  await serve({ ...base, handoff: h, mcpToken: token }, answer('x'), async url => {
+    const r = JSON.parse((await tool(url, 'reply_to_visitor', { conversation: conv, text: '接的，明天邮件细聊。', remember: { question: '接不接海外项目？', answer: '接，远程协作，时区可以协调。' } })).content[0].text);
+    assert.equal(r.delivered, true); assert.match(r.saved_answer, /^[0-9a-f-]{36}$/);
+    assert.equal((await tool(url, 'reply_to_visitor', { conversation: conv, text: 'ok', remember: { question: '', answer: 'x' } })).isError, true);
+    const s = JSON.parse((await tool(url, 'save_answer', { question: '报价怎么算？', answer: '按项目范围报价，先聊需求。' })).content[0].text);
+    assert.equal(s.saved, true);
+    const list = JSON.parse((await tool(url, 'list_saved_answers', {})).content[0].text).answers;
+    assert.deepEqual(list.map((a: { question: string }) => a.question).sort(), ['报价怎么算？', '接不接海外项目？'].sort());
+    assert.equal(JSON.parse((await tool(url, 'forget_saved_answer', { id: s.id })).content[0].text).forgotten, true);
+    assert.equal((await tool(url, 'forget_saved_answer', { id: s.id })).isError, true);
+    assert.equal((await h.savedAnswers(10)).length, 1);
+  });
+});
+
+test('saved answers are capped at 100', async () => {
+  const h = store(); const token = 'x'.repeat(24);
+  for (let i = 0; i < 100; i++) await h.saveAnswer('q' + i, 'a');
+  await serve({ ...base, handoff: h, mcpToken: token }, answer('x'), async url => {
+    assert.match((await tool(url, 'save_answer', { question: 'one more', answer: 'a' })).content[0].text, /full/);
+  });
+});
+
+test('saved answers reach the model as owner-confirmed knowledge, right after saving', async () => {
+  const h = store(); const token = 'x'.repeat(24); let system = '';
+  await serve({ ...base, handoff: h, mcpToken: token }, (async (_u: string, init: RequestInit) => { system = JSON.parse(String(init.body)).messages[0].content; return new Response(frame('ok', 'stop') + 'data: [DONE]\n\n'); }) as typeof fetch, async url => {
+    const ask = () => fetch(url + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversation: conv, messages: [{ role: 'user', content: '接海外项目吗' }] }) }).then(r => r.text());
+    await ask(); assert.doesNotMatch(system, /主人亲自回答过/);
+    await tool(url, 'save_answer', { question: '接不接海外项目？', answer: '接，远程协作。' });
+    await ask(); assert.match(system, /主人亲自回答过：接不接海外项目？/);
   });
 });
