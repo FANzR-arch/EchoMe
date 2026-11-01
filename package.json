@@ -56,5 +56,5 @@
     "node": "24.x"
   },
   "license": "MIT",
-  "description": "Echome: an AI assistant for your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection."
+  "description": "EchoMe: an AI assistant for your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection."
 }

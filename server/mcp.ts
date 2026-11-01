@@ -75,12 +75,12 @@ export function createMcp(store: HandoffStore, limits = { repliesPerHour: 20 }) 
     if (!rpc || rpc.jsonrpc !== '2.0' || typeof rpc.method !== 'string') return error(-32600, 'Invalid request');
     if (rpc.id === undefined) return undefined;
     switch (rpc.method) {
-      case 'initialize': return reply({ protocolVersion: typeof rpc.params?.protocolVersion === 'string' ? rpc.params.protocolVersion : PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'echome', version: '1.0.0' }, instructions: 'Echome connects the owner to visitors of their personal website. ' + untrustedNote + ' Only reply_to_visitor with words the owner wrote or approved. ' + rememberNote });
+      case 'initialize': return reply({ protocolVersion: typeof rpc.params?.protocolVersion === 'string' ? rpc.params.protocolVersion : PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'echome', version: '1.0.0' }, instructions: 'EchoMe connects the owner to visitors of their personal website. ' + untrustedNote + ' Only reply_to_visitor with words the owner wrote or approved. ' + rememberNote });
       case 'ping': return reply({});
       case 'tools/list': return reply({ tools: mcpTools });
       case 'tools/call': {
         try { return reply(await call(String(rpc.params?.name), rpc.params?.arguments ?? {})); }
-        catch { return reply(text('Echome storage is unavailable. Try again later.', true)); }
+        catch { return reply(text('EchoMe storage is unavailable. Try again later.', true)); }
       }
       default: return error(-32601, 'Method not found');
     }

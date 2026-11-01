@@ -39,8 +39,8 @@ export default defineConfig(({ mode }) => {
                   : `/src/entries/${target}.tsx`,
               )
               .replace(
-                "<title>Echome</title>",
-                `<title>${target === "admin" ? `Echome · ${owner.name.zh}的后台` : `${owner.name.zh}的 AI 助手`}</title>`,
+                "<title>EchoMe</title>",
+                `<title>${target === "admin" ? `EchoMe · ${owner.name.zh}的后台` : `${owner.name.zh}的 AI 助手`}</title>`,
               );
           },
         },

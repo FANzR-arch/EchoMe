@@ -1,4 +1,4 @@
-/** Checks a deployed Echome step by step, for people and for AI agents following AGENT-SETUP.md. Never prints secrets. */
+/** Checks a deployed EchoMe step by step, for people and for AI agents following AGENT-SETUP.md. Never prints secrets. */
 import { randomUUID } from 'node:crypto';
 const args = process.argv.slice(2), flag = n => args.includes(n), value = n => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
 const site = (value('--site') ?? process.env.PAI_PUBLIC_ORIGIN ?? '').replace(/\/$/, '');
@@ -20,7 +20,7 @@ if (config.handoff) { const r = await get('/api/replies?conversation=echome-setu
 check('访客提醒（webhook）', config.contact === true, `contact=${config.contact ?? '?'}`, '填 PAI_NOTIFY_WEBHOOK_URL 和 PAI_NOTIFY_WEBHOOK_KEY 后重新部署');
 
 if (flag('--send-test') && config.contact) {
-  const r = await get('/api/handoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversation: 'echome-setup-' + randomUUID(), name: 'Echome 安装测试', contact: 'setup-test', message: '这是一条安装测试消息，用来确认访客提醒已接通。' }) });
+  const r = await get('/api/handoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversation: 'echome-setup-' + randomUUID(), name: 'EchoMe 安装测试', contact: 'setup-test', message: '这是一条安装测试消息，用来确认访客提醒已接通。' }) });
   let notified = false; try { notified = JSON.parse(r.body).notified === true; } catch { /* reported below */ }
   check('发送测试提醒', notified, `POST /api/handoff → ${r.status}, notified=${notified}`, notified ? '' : '服务端调用 webhook 失败：检查网址和密钥是否来自同一个任务；同一类测试 10 分钟内只发一次');
 }

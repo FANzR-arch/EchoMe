@@ -1,4 +1,4 @@
-/*! Echome embed · MIT License
+/*! EchoMe embed · MIT License
  * Usage, on any page of a site listed in owner.config.json "embedOrigins":
  *   <script src="https://YOUR-CHAT-SITE/embed.js" data-label="Talk to my AI" defer></script>
  * Optional: data-theme="auto|light|dark", data-position="right|left", data-open="true".
@@ -89,5 +89,5 @@
     document.body.append(host);
     if (opt("open", "") === "true") show();
   });
-  window.Echome = { open: show, close: hide };
+  window.EchoMe = { open: show, close: hide };
 })();

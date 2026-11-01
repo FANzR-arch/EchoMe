@@ -1,15 +1,15 @@
-# Echome
+# EchoMe
 
 给你的个人网站加一个 AI 助手。访客问关于你的事，它只根据你公开写过的资料回答，不乱编。一行代码嵌进你的网站。
 
-*Echome adds an AI assistant to your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection. MIT licensed.*
+*EchoMe adds an AI assistant to your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection. MIT licensed.*
 
 ## 最省事：让你的 AI 帮你装
 
 如果你有 Grok Bot、Claude Code、Codex 这类能操作电脑的 AI 助手，把下面这句话发给它：
 
 ```text
-请按 https://github.com/FANzR-arch/echome/blob/main/AGENT-SETUP.md 帮我安装 Echome，并把你自己接上它的访客提醒和回复。需要我登录、填密钥或确认的时候再叫我。
+请按 https://github.com/FANzR-arch/EchoMe/blob/main/AGENT-SETUP.md 帮我安装 EchoMe，并把你自己接上它的访客提醒和回复。需要我登录、填密钥或确认的时候再叫我。
 ```
 
 它会帮你复制项目、问你几个问题、照着你的网站起草资料、建数据库、部署、给自己接上访客提醒和回复工具，最后把嵌入代码交给你。你只需要在它叫你的时候登录账号、填密钥、点确认。
@@ -24,7 +24,7 @@
 
 点这个按钮：
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fechome&project-name=echome&repository-name=echome&env=PAI_API_BASE_URL,PAI_MODEL,PAI_API_KEY&envDescription=OpenAI-compatible%20API%20base%20URL%2C%20model%20name%20and%20key%20for%20your%20assistant&envLink=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fechome%23%E7%AC%AC%E4%B8%80%E6%AD%A5%E9%83%A8%E7%BD%B2)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FFANzR-arch%2FEchoMe&project-name=echome&repository-name=echome&env=PAI_API_BASE_URL,PAI_MODEL,PAI_API_KEY&envDescription=OpenAI-compatible%20API%20base%20URL%2C%20model%20name%20and%20key%20for%20your%20assistant&envLink=https%3A%2F%2Fgithub.com%2FFANzR-arch%2FEchoMe%23%E7%AC%AC%E4%B8%80%E6%AD%A5%E9%83%A8%E7%BD%B2)
 
 Vercel 会把这个项目复制一份到你的 GitHub，然后让你填三项：
 
@@ -150,7 +150,7 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 <script src="https://YOUR-CHAT-SITE/embed.js" data-label="和我的 AI 聊聊" defer></script>
 ```
 
-右下角出现按钮，点开是聊天面板，手机上全屏，Esc 关闭。可选属性：`data-theme="auto|light|dark"`、`data-position="right|left"`、`data-open="true"`。页面脚本可以调用 `Echome.open()` / `Echome.close()`。
+右下角出现按钮，点开是聊天面板，手机上全屏，Esc 关闭。可选属性：`data-theme="auto|light|dark"`、`data-position="right|left"`、`data-open="true"`。页面脚本可以调用 `EchoMe.open()` / `EchoMe.close()`。
 
 两处必须允许你的网站来源，否则浏览器会拒绝嵌入：
 
