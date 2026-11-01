@@ -1,13 +1,12 @@
-# PersonalAI 主人使用说明
+# Echome 主人使用说明
 
 日常只需要记住：**和 AI 聊 → 确认保存 → 发布到线上**。看访客的问题时，再打开「线上存档」。
 
 ## 1. 打开后台
 
-后台目前只在你的电脑运行。网页打不开时，在 PersonalAI 项目目录运行：
+后台目前只在你的电脑运行。网页打不开时，在项目目录运行：
 
 ```powershell
-cd D:\00_Formula\03_Coding\PersonalAI
 npm run dev:admin
 ```
 
@@ -55,7 +54,7 @@ npm run dev:admin
 
 最省事的方式：告诉 Codex **「把我确认的最新资料发布到线上 AI，并检查一次配置，不调用模型」**。
 
-自己操作则在 PersonalAI 目录运行：
+自己操作则在项目目录运行：
 
 ```powershell
 npm run knowledge:export

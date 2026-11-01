@@ -19,23 +19,17 @@ import {
 import { usePreferences } from "@/lib/preferences";
 import { useState, type ReactNode } from "react";
 import { siteTarget } from "@/lib/site";
-import { ownerName } from "@/lib/owner";
+import { assistantName, productName } from "@/lib/owner";
+/** Visitors see whose assistant this is; the owner's admin shows the product name. */
 export function Brand({ compact = false }: { compact?: boolean }) {
+  const { t } = usePreferences();
+  const admin = siteTarget === "admin";
   return (
     <Link
-      to={
-        siteTarget === "admin" ? "/admin/inbox" : `/chat${location.search}`
-      }
-      className="brand"
+      to={admin ? "/admin/inbox" : `/chat${location.search}`}
+      className={`brand${compact ? " brand-compact" : ""}`}
     >
-      <span className="brand-mark">
-        {ownerName.en.slice(0, 1).toUpperCase()}<ArrowUpRight size={16} />
-      </span>
-      {!compact && (
-        <span>
-          {ownerName.en}<span className="brand-sub"> / Personal AI</span>
-        </span>
-      )}
+      {admin ? productName : t(assistantName.zh, assistantName.en)}
     </Link>
   );
 }

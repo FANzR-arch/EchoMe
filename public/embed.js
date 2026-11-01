@@ -1,4 +1,4 @@
-/*! PersonalAI embed · MIT License
+/*! Echome embed · MIT License
  * Usage, on any page of a site listed in owner.config.json "embedOrigins":
  *   <script src="https://YOUR-CHAT-SITE/embed.js" data-label="Talk to my AI" defer></script>
  * Optional: data-theme="auto|light|dark", data-position="right|left", data-open="true".
@@ -6,8 +6,8 @@
  */
 (() => {
   const script = document.currentScript;
-  if (!script || window.__personalAiEmbed) return;
-  window.__personalAiEmbed = true;
+  if (!script || window.__echomeEmbed) return;
+  window.__echomeEmbed = true;
   const chatOrigin = new URL(script.src).origin;
   const opt = (name, fallback) => script.getAttribute("data-" + name) || fallback;
   const label = opt("label", document.documentElement.lang.startsWith("zh") ? "和我的 AI 聊聊" : "Talk to my AI");
@@ -17,7 +17,7 @@
   const theme = () => (themeOption === "light" || themeOption === "dark" ? themeOption : dark.matches ? "dark" : "light");
 
   const host = document.createElement("div");
-  host.setAttribute("data-personal-ai", "");
+  host.setAttribute("data-echome", "");
   const root = host.attachShadow({ mode: "closed" });
   root.innerHTML = `<style>
     :host { all: initial; }
@@ -89,5 +89,5 @@
     document.body.append(host);
     if (opt("open", "") === "true") show();
   });
-  window.PersonalAI = { open: show, close: hide };
+  window.Echome = { open: show, close: hide };
 })();

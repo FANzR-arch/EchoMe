@@ -15,7 +15,7 @@ export default function InstallPage() {
   const allowed = owner.embedOrigins.filter(o => o.startsWith("https://"));
   return (
     <main className="install-page">
-      <p className="install-eyebrow">PersonalAI</p>
+      <p className="install-eyebrow">Echome</p>
       <h1>{t(`${assistantName.zh}已经上线`, `${assistantName.en} is live`)}</h1>
       <p className="install-lead">{t("把下面这一行放进你网站的页面里，右下角就会出现聊天按钮。", "Paste this line into your site's pages and a chat button appears in the corner.")}</p>
       <div className="install-code">

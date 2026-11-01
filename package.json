@@ -1,5 +1,5 @@
 {
-  "name": "personal-ai",
+  "name": "echome",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -54,5 +54,5 @@
     "node": "24.x"
   },
   "license": "MIT",
-  "description": "Embeddable personal AI assistant for your own website: grounded answers from your published content, signed history and prompt-injection guards."
+  "description": "Echome: an AI assistant for your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection."
 }

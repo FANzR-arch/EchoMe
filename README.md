@@ -1,34 +1,81 @@
-# PersonalAI
+# Echome
 
-给个人网站用的 AI 助手：只依据你公开发布、亲自审核过的资料回答访客，一行脚本嵌入任何网站。带本机私人工作台，用来维护资料、审核对话、让 AI 起草修改。
+给你的个人网站加一个 AI 助手。访客问关于你的事，它只根据你公开写过的资料回答，不乱编。一行代码嵌进你的网站。
 
-*An embeddable AI assistant for your personal website. It answers visitors only from content you published and reviewed, ships a local owner workbench, and is hardened against prompt injection. MIT licensed.*
+*Echome adds an AI assistant to your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection. MIT licensed.*
 
-- **公开聊天站**：React + assistant-ui，流式回答，中英双语，明暗主题，手机全屏。可单独访问，也可嵌入。
-- **私人工作台**：只跑在本机 `127.0.0.1`，管理人设、规则、资料、版本、对话审核和 AI 修改提案。
-- **资料而非向量库**：核心资料每次完整提供，详细资料由模型按目录编号读取（一轮、最多两份）。不爬网、不做嵌入。
-- **防提示词注入**：见下文「安全设计」。
-- **可选云端**：Vercel 部署公开聊天，Supabase 存审核记录并自动清理。
+## 怎么用：三步
 
-## 一键部署
+你需要准备两样东西：一个 GitHub 账号，一个大模型 API 密钥（DeepSeek、OpenAI 或任何兼容 OpenAI 接口的服务都行）。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fpersonal-ai&project-name=personal-ai&repository-name=personal-ai&env=PAI_API_BASE_URL,PAI_MODEL,PAI_API_KEY&envDescription=OpenAI-compatible%20API%20base%20URL%2C%20model%20name%20and%20key%20for%20your%20assistant&envLink=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fpersonal-ai%23%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2)
+### 第一步：部署
 
-1. 点上面的按钮。Vercel 会把仓库复制到你的 GitHub，并让你填三项：
-   - `PAI_API_BASE_URL`：任何兼容 OpenAI Chat Completions 的接口地址，例如 `https://api.deepseek.com`
-   - `PAI_MODEL`：模型名，例如 `deepseek-flash`
-   - `PAI_API_KEY`：你的密钥，只存在 Vercel 的服务端环境变量里
-2. 部署完成后打开 `https://你的项目.vercel.app/install`，那里有为你这个站点生成好的嵌入代码，复制即可。
-3. 在你的 GitHub 仓库里改 `owner.config.json`（称呼、联系方式、允许嵌入的网站 `embedOrigins`）和 `knowledge/` 文件夹。每次提交，Vercel 自动重新部署。
+点这个按钮：
 
-不需要数据库，也不需要在本机运行任何东西。可选项：
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fechome&project-name=echome&repository-name=echome&env=PAI_API_BASE_URL,PAI_MODEL,PAI_API_KEY&envDescription=OpenAI-compatible%20API%20base%20URL%2C%20model%20name%20and%20key%20for%20your%20assistant&envLink=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fechome%23%E7%AC%AC%E4%B8%80%E6%AD%A5%E9%83%A8%E7%BD%B2)
 
-- `PAI_HISTORY_SECRET`：一串长随机字符，用来给回复签名。不填会从 API 密钥派生。
-- `PAI_TOOLS=off`：你的模型不支持工具调用（function calling）时填。之后只依据“每次都带上”的资料回答。
-- `PAI_PUBLIC_ORIGIN`：用自定义域名或非生产地址访问时填完整 https 地址。默认用 Vercel 的生产域名，用别的地址访问会被拒绝。
-- Supabase（`PAI_SUPABASE_URL`、`PAI_SUPABASE_SECRET_KEY`）：想在线查看访客对话、跨实例共享额度时再接，见 [部署说明](docs/VERCEL-SUPABASE.md)。不接时，限流按单个函数实例计算。
+Vercel 会把这个项目复制一份到你的 GitHub，然后让你填三项：
 
-## 本机运行和私人工作台
+| 填什么 | 例子 |
+| --- | --- |
+| `PAI_API_BASE_URL` 接口地址 | `https://api.deepseek.com` |
+| `PAI_MODEL` 模型名 | `deepseek-flash` |
+| `PAI_API_KEY` 你的密钥 | `sk-...` |
+
+点 Deploy，等一两分钟就上线了。密钥只存在 Vercel 的服务器上，访客看不到。
+
+### 第二步：换成你自己的资料
+
+在你 GitHub 上那份复制出来的仓库里，直接在网页上编辑这两处：
+
+1. **`owner.config.json`**：你是谁、怎么联系你、哪些网站可以嵌入聊天窗口。
+
+   ```json
+   {
+     "name": { "zh": "小王", "en": "Wang" },
+     "pronoun": { "zh": "他", "en": "he" },
+     "site": "https://wang.example.com",
+     "contact": {
+       "url": "https://wang.example.com/contact",
+       "label": { "zh": "小王的联系页", "en": "Contact Wang" }
+     },
+     "embedOrigins": ["https://wang.example.com"]
+   }
+   ```
+
+   `embedOrigins` 一定要填你自己网站的地址，否则聊天窗口在你的网站上不会显示。
+
+2. **`knowledge/` 文件夹**：AI 能说的内容全在这里。
+   - `website/snapshot.json`：你的介绍、作品、文章、联系方式，一条一条写。照着里面的示例改就行。想让某条每次回答都参考，给它加 `"tier": "core"`（这类内容合计不超过 4,000 字）。
+   - `persona.md`：它说话的语气。
+   - `rules.md`：它必须遵守的规则。
+
+每次保存（提交），Vercel 会自动重新部署，一两分钟后生效。
+
+### 第三步：放到你的网站上
+
+打开 `https://你的项目.vercel.app/install`，复制页面上那一行代码，粘贴到你网站的页面里（放在 `</body>` 前面就行）：
+
+```html
+<script src="https://你的项目.vercel.app/embed.js" data-label="和我的 AI 聊聊" defer></script>
+```
+
+刷新你的网站，右下角会出现聊天按钮。
+
+## 常见问题
+
+- **按钮出现了，点开却显示“这里不能嵌入聊天”？** 把你网站的地址加进 `owner.config.json` 的 `embedOrigins`，提交后等重新部署完。
+- **回答里说“无法确认”？** 说明资料里没写这件事。把它写进 `knowledge/`。
+- **模型报错，说不支持工具？** 在 Vercel 的环境变量里加 `PAI_TOOLS=off`。之后它只参考标了 `"tier": "core"` 的资料。
+- **用了自己的域名打不开？** 在 Vercel 环境变量里加 `PAI_PUBLIC_ORIGIN=https://你的聊天域名`。
+- **想看访客都问了什么？** 接上 Supabase（免费），见 [部署说明](docs/VERCEL-SUPABASE.md)。不接也能正常聊天。
+- **要花多少钱？** Vercel 和 Supabase 的免费额度够个人网站用。模型按你的 API 用量计费，默认全站每天最多 30 次对话，防止被刷。
+
+---
+
+以下是进阶内容：在自己电脑上用后台维护资料、测试草稿、审核对话。只用上面三步的话可以不看。
+
+## 进阶：在本机用后台
 
 想在本机维护资料、审核对话、测试草稿，就在本机运行。需要 Node.js 24（使用内置 SQLite）。
 
@@ -39,7 +86,7 @@ npm run dev:chat    # 访客聊天 http://127.0.0.1:5174/chat
 npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 ```
 
-默认 `PAI_MODE=mock`，不调用任何模型，界面明确标记“模拟回答”。仓库自带的“阿哲”是虚构示例主人。
+默认 `PAI_MODE=mock`，不调用任何模型，界面明确标记“模拟回答”。仓库自带的是示例资料。
 
 私人工作台分五页：
 
@@ -73,7 +120,7 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
    PAI_HISTORY_SECRET=一串足够长的随机字符
    ```
 
-   密钥只在服务端使用，不带 `VITE_` 前缀。改完重启。工作台「总览 → 检查模型工具兼容性」确认模型能否按目录读取详细资料。
+   密钥只在服务端使用，不带 `VITE_` 前缀。改完重启。后台「发布与嵌入 → 模型检查」可以确认模型能否按目录读取详细资料。
 
 工作台日常用法见 [主人使用说明](docs/OWNER-GUIDE.md)，运行细节见 [架构与运行细节](docs/ARCHITECTURE.md)。
 
@@ -85,7 +132,7 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 <script src="https://YOUR-CHAT-SITE/embed.js" data-label="和我的 AI 聊聊" defer></script>
 ```
 
-右下角出现按钮，点开是聊天面板，手机上全屏，Esc 关闭。可选属性：`data-theme="auto|light|dark"`、`data-position="right|left"`、`data-open="true"`。页面脚本可以调用 `PersonalAI.open()` / `PersonalAI.close()`。
+右下角出现按钮，点开是聊天面板，手机上全屏，Esc 关闭。可选属性：`data-theme="auto|light|dark"`、`data-position="right|left"`、`data-open="true"`。页面脚本可以调用 `Echome.open()` / `Echome.close()`。
 
 两处必须允许你的网站来源，否则浏览器会拒绝嵌入：
 
@@ -97,7 +144,7 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 ## 部署
 
 - 只要公开聊天：`npm run build:chat`，`dist/chat` 是静态站，但需要一个运行 `server/api.ts` 的 Node 服务提供 `/api/chat`。
-- 一键部署：见本文开头。线上直接读取仓库里的 `owner.config.json` 和 `knowledge/`。
+- 一键部署：见本文开头的三步。线上直接读取仓库里的 `owner.config.json` 和 `knowledge/`。
 - 本机审核后发布：在私人工作台「发布与嵌入」点发布（或运行 `npm run knowledge:export`）生成资料包，再 `npm run deploy:vercel`。有资料包时线上以它为准，你的私人资料不必进 Git。环境变量、SQL 和清理任务见 [Vercel + Supabase 部署说明](docs/VERCEL-SUPABASE.md)。
 - 私人工作台永远不部署，管理接口只接受本机 loopback、同源请求和临时会话令牌。
 
