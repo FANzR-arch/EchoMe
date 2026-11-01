@@ -22,6 +22,8 @@ export type SavedMessage = {
   mode?: "real" | "mock";
   /** Server signature; without it the reply is not trusted as history. */
   sig?: string;
+  /** Written by the owner in person, delivered through their agent. */
+  owner?: boolean;
   metrics?: { model: string; requestedModel?: string; durationMs: number; firstTokenMs?: number; usage?: Record<string, number>; finish: string };
 };
 export type Conversation = {

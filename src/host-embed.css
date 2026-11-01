@@ -61,3 +61,7 @@ html[data-portfolio] .thread-viewport { scrollbar-gutter:auto; }
 
 /* Both portfolio surfaces inherit the same warm site palette. */
 html[data-portfolio="panel"] .user-message { background:color-mix(in oklab,var(--foreground) 7%,var(--background)); }
+
+/* A reply the owner wrote in person, not the assistant. */
+.owner-message .assistant-label { color: var(--foreground); font-weight: 600; }
+.owner-message .message-text { border-left: 2px solid var(--primary); padding-left: 12px; }

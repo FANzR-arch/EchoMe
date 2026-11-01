@@ -92,13 +92,39 @@ export function ChatRuntime({
                         error: m.error ?? "AI request failed",
                       }
                     : { type: "complete" as const, reason: "stop" as const },
-              metadata: { custom: { sources: m.sources ?? [], mode: m.mode ?? "mock", metrics: m.metrics, sig: m.sig } },
+              metadata: { custom: { sources: m.sources ?? [], mode: m.mode ?? "mock", metrics: m.metrics, sig: m.sig, owner: m.owner } },
             }
           : {}),
       })) ?? [],
     [conversation?.id],
   );
   const runtime = useLocalRuntime(adapter, { initialMessages });
+  // Owner replies sent from their agent arrive by polling while the page is visible.
+  useEffect(() => {
+    if (!conversation || draft || !modelState.handoff) return;
+    const id = conversation.id;
+    let after = (conversation.messages.filter(m => m.owner).map(m => m.time).sort().at(-1)) ?? "", timer: ReturnType<typeof setTimeout> | undefined, stopped = false;
+    const seen = new Set<string>();
+    const poll = async () => {
+      timer = undefined;
+      if (stopped || document.hidden) return;
+      try {
+        const r = await fetch(`/api/replies?conversation=${encodeURIComponent(id)}&locale=${options.current.locale}${after ? "&after=" + encodeURIComponent(after) : ""}`);
+        if (r.ok && !runtime.thread.getState().isRunning) {
+          for (const m of (await r.json()).messages as { id: string; created: string; text: string; signature: string }[]) {
+            if (seen.has(m.id)) continue;
+            seen.add(m.id); after = m.created > after ? m.created : after;
+            runtime.thread.append({ role: "assistant", content: [{ type: "text", text: m.text }], createdAt: new Date(m.created), metadata: { custom: { mode: "real", owner: true, sig: m.signature, sources: [] } } });
+          }
+        }
+      } catch { /* Try again on the next tick. */ }
+      if (!stopped) timer = setTimeout(poll, 10000);
+    };
+    const wake = () => { if (!document.hidden && !timer) void poll(); };
+    void poll();
+    document.addEventListener("visibilitychange", wake);
+    return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", wake); };
+  }, [conversation?.id, draft, modelState.handoff, runtime]);
   // Report activity only, never messages, through the validated portfolio bridge.
   useEffect(() => {
     if (!portfolio) return;
@@ -143,6 +169,7 @@ export function ChatRuntime({
           mode: (m.metadata.custom?.mode as "real" | "mock" | undefined) ?? "mock",
           metrics: m.metadata.custom?.metrics as SavedMessage["metrics"],
           sig: m.metadata.custom?.sig as string | undefined,
+          owner: m.metadata.custom?.owner === true || undefined,
           error:
             m.role === "assistant" &&
             m.status.type === "incomplete" &&
@@ -324,14 +351,15 @@ function AssistantMessage() {
     });
     void event("feedback", id, kind);
   };
+  const fromOwner = message.metadata.custom?.owner === true;
   return (
     <MessagePrimitive.Root
-      className="assistant-message"
+      className={`assistant-message${fromOwner ? " owner-message" : ""}`}
       data-testid="assistant-message"
     >
       <div className="assistant-label">
-        <span className="mini-mark">{N.en.slice(0, 1).toUpperCase()}</span> {N.en.toUpperCase()}’S AI
-        <span>{message.metadata.custom?.mode === "real" ? t(" · AI 生成", " · AI generated") : t(" · 模拟回答", " · Simulated")}</span>
+        <span className="mini-mark">{N.en.slice(0, 1).toUpperCase()}</span>
+        {fromOwner ? t(`${N.zh}本人`, `${N.en}, in person`) : <>{N.en.toUpperCase()}’S AI<span>{message.metadata.custom?.mode === "real" ? t(" · AI 生成", " · AI generated") : t(" · 模拟回答", " · Simulated")}</span></>}
       </div>
       <div className="message-text">
         <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
@@ -377,10 +405,11 @@ function AssistantMessage() {
         <ActionBarPrimitive.Copy aria-label={t("复制回答", "Copy response")}>
           {message.isCopied ? <Check size={14} /> : <Copy size={14} />}{portfolio && <span>{message.isCopied ? t("已复制", "Copied") : t("复制", "Copy")}</span>}
         </ActionBarPrimitive.Copy>
-        <ActionBarPrimitive.Reload aria-label={t("重试回答", "Retry response")}>
+        {/* The owner's own words are never regenerated or rated as AI output. */}
+        {!fromOwner && <ActionBarPrimitive.Reload aria-label={t("重试回答", "Retry response")}>
           <RefreshCw size={14} />{portfolio && <span>{t("重试", "Retry")}</span>}
-        </ActionBarPrimitive.Reload>
-        {id && (
+        </ActionBarPrimitive.Reload>}
+        {id && !fromOwner && (
           <>
             <Button
               variant="ghost"

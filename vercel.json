@@ -19,6 +19,18 @@
       "destination": "/api?route=config"
     },
     {
+      "source": "/api/mcp",
+      "destination": "/api?route=mcp"
+    },
+    {
+      "source": "/api/handoff",
+      "destination": "/api?route=handoff"
+    },
+    {
+      "source": "/api/replies",
+      "destination": "/api?route=replies"
+    },
+    {
       "source": "/chat",
       "destination": "/index.html"
     },

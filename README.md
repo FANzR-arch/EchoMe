@@ -4,6 +4,18 @@
 
 *Echome adds an AI assistant to your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection. MIT licensed.*
 
+## 最省事：让你的 AI 帮你装
+
+如果你有 Grok Bot、Claude Code、Codex 这类能操作电脑的 AI 助手，把下面这句话发给它：
+
+```text
+请按 https://github.com/FANzR-arch/echome/blob/main/AGENT-SETUP.md 帮我安装 Echome，并把你自己接上它的访客提醒和回复。需要我登录、填密钥或确认的时候再叫我。
+```
+
+它会帮你复制项目、问你几个问题、照着你的网站起草资料、建数据库、部署、给自己接上访客提醒和回复工具，最后把嵌入代码交给你。你只需要在它叫你的时候登录账号、填密钥、点确认。
+
+想自己动手，就按下面三步。
+
 ## 怎么用：三步
 
 你需要准备两样东西：一个 GitHub 账号，一个大模型 API 密钥（DeepSeek、OpenAI 或任何兼容 OpenAI 接口的服务都行）。
@@ -61,6 +73,12 @@ Vercel 会把这个项目复制一份到你的 GitHub，然后让你填三项：
 ```
 
 刷新你的网站，右下角会出现聊天按钮。
+
+## 和你的私人 AI 联动（Grok Bot）
+
+访客想合作、留了联系方式、或者 AI 答不上来时，Grok Bot 会在你手机上提醒你。你对它说一句“回他：……”，访客的聊天窗口里马上出现「本人回复」。普通问题照常由 AI 回答，不打扰你。
+
+需要接 Supabase，加三个环境变量，在 Grok Bot 里建一个 webhook 任务、接一个 MCP 工具。完整步骤见 [和 Grok Bot 联动](docs/GROK-BOT.md)。用的是通用的 webhook 和 MCP，其他支持这两种接口的助手也能照着接。
 
 ## 常见问题
 

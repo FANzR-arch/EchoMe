@@ -1,4 +1,5 @@
 /** Supabase service-role REST client; used only by server functions and localhost admin. */
+import { summarize, runsToTurns, type HandoffStore, type OwnerMessage } from "./handoff.ts";
 export function cloudConfigured(){return !!process.env.PAI_SUPABASE_URL&&!!process.env.PAI_SUPABASE_SECRET_KEY;}
 export class CloudStore {
   private base:string;private key:string;private fetcher:typeof fetch;
@@ -30,4 +31,25 @@ export class CloudStore {
   }
   async deleteConversation(id:string){if(!/^[a-zA-Z0-9_-]{1,80}$/.test(id))throw Error('INPUT_LIMIT');await this.request('pai_conversations?id=eq.'+encodeURIComponent(id),'DELETE');}
   async cleanup(){return this.request('rpc/pai_cleanup','POST',{});}
+}
+
+/** Owner hand-off on Supabase; same contract as LocalHandoff. */
+export class CloudHandoff implements HandoffStore {
+  private cloud:CloudStore;
+  constructor(cloud=new CloudStore()){this.cloud=cloud;}
+  async add(conversation:string,role:OwnerMessage['role'],text:string):Promise<OwnerMessage>{return this.cloud.request('rpc/pai_owner_add','POST',{p_conversation:conversation,p_role:role,p_text:text});}
+  async messages(conversation:string,after=''):Promise<OwnerMessage[]>{
+    return this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&conversation=eq.'+encodeURIComponent(conversation)+(after?'&created=gt.'+encodeURIComponent(after):'')+'&order=created.asc&limit=100');
+  }
+  async repliesSince(since:string){return (await this.cloud.request('pai_owner_messages?select=id&role=eq.owner&created=gt.'+encodeURIComponent(since)+'&limit=1000')).length;}
+  private runs(filter=''){return this.cloud.request('pai_runs?select=conversation,created,input:value->input,response:value->>response'+filter);}
+  async recent(limit:number){
+    const [runs,notes]=await Promise.all([this.runs('&order=created.desc&limit=200'),this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&order=created.desc&limit=200')]);
+    return summarize(runs,notes,limit);
+  }
+  async transcript(conversation:string){
+    const c=encodeURIComponent(conversation);
+    const [runs,notes]=await Promise.all([this.runs('&conversation=eq.'+c+'&order=created.asc&limit=100'),this.messages(conversation)]);
+    return runs.length||notes.length?runsToTurns(runs,notes):undefined;
+  }
 }

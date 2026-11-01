@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ChatModelAdapter } from "@assistant-ui/react";
 import type { Locale } from "./data";
-export type ModelState = { mode: "real" | "mock" | "unavailable" | "loading"; configured?: boolean; model?: string };
+export type ModelState = { mode: "real" | "mock" | "unavailable" | "loading"; configured?: boolean; model?: string; handoff?: boolean; contact?: boolean };
 export function useModelState() {
   const [state, setState] = useState<ModelState>({ mode: "loading" });
   useEffect(() => {
@@ -62,6 +62,8 @@ export function realAdapter(locale: () => Locale, conversation?: string): ChatMo
           if (event.type === "done") {
             completed = true;
             yield { content: [{ type: "text", text }], metadata: { custom: { mode: "real", sig: typeof event.signature === "string" ? event.signature : undefined, sources: event.sources, metrics: { model: event.model, requestedModel: event.requestedModel, durationMs: event.durationMs, firstTokenMs: event.firstTokenMs, usage: event.usage, finish: event.finish, routing:event.routing,responseKind:event.responseKind } } } };
+            // Final at "done": don't wait while the server finishes owner notices before closing.
+            return;
           }
         }
         if (done) break;

@@ -13,9 +13,21 @@ import { hash } from "./workbench-store.ts";
 import { historySigner, historySecret, neutralize, visitorReminder, leakCoverage, leakThreshold, guardedReply, unverifiedReply } from "./guard.ts";
 import { guardRules } from "./prompts.ts";
 import { responseStyle } from "./response-style.ts";
+import { notifyReason, conversationId, type HandoffStore, type Reason } from "./handoff.ts";
+import { createMcp, tokenMatches } from "./mcp.ts";
+import { owner } from "./owner.ts";
 export const limits = { input: 2000, context: 36000, messages: 24, output: 600, perMinute: 6, concurrent: 2, daily: 30, timeoutMs: 45000, idleMs: 12000 };
 export type AuditStore = { startRun(value:Record<string,unknown>,conversation:string):string|Promise<string>; finishRun(id:string,value:unknown):void|Promise<void> };
-export type Config = { mode: string; baseUrl: string; model: string; key: string; historySecret?: string; audit?: boolean; toolsVerified?: boolean; intentRouting?:boolean; publicOrigin?:string; auditStore?:AuditStore };
+export type Config = { mode: string; baseUrl: string; model: string; key: string; historySecret?: string; audit?: boolean; toolsVerified?: boolean; intentRouting?:boolean; publicOrigin?:string; auditStore?:AuditStore;
+  /** Owner hand-off: replies from the owner's agent, notices to it, and the MCP endpoint it calls. */
+  handoff?:HandoffStore; notify?:(notice:{reason:Reason;conversation:string;visitor:string;assistant?:string;contact?:string})=>Promise<boolean>; mcpToken?:string };
+/** Prefix the visitor sees on the owner's own words; it is also what the model reads back as history. */
+export const ownerLabel=(locale:string)=>locale==='en'?`[${owner().name.en}, in person] `:`【${owner().name.zh}本人回复】`;
+async function readJson(req:IncomingMessage,max=65536){
+  let raw='',bytes=0;req.setEncoding('utf8');
+  for await(const chunk of req){bytes+=Buffer.byteLength(chunk);if(bytes>max)throw fail('INPUT_LIMIT');raw+=chunk;}
+  try{return JSON.parse(raw);}catch{throw fail('INPUT_LIMIT');}
+}
 const fail = (code: string) => new Error(code);
 export function validate(body: unknown) {
   const b = body as { messages?: { role: string; content: string; sig?: string }[]; locale?: string };
@@ -35,6 +47,8 @@ export function trustHistory(messages: { role: string; content: string; sig?: st
 export function createApi(config: Config, fetcher: typeof fetch = fetch, policy = limits) {
   let active = 0, attempts: number[] = [], day = "", daily = 0;
   const signer = historySigner(historySecret(config.historySecret, config.key));
+  const mcp = config.handoff && config.mcpToken ? createMcp(config.handoff) : undefined;
+  let handoffs: number[] = [];
   const configured = (() => { try { const u = new URL(config.baseUrl); return u.protocol === "https:" && !u.username && !u.password && !u.search && !u.hash && !!config.model && !!config.key; } catch { return false; } })();
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (!req.url?.startsWith("/api/")) return next();
@@ -45,7 +59,47 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
     const expected=config.publicOrigin??`http://${host}`;
     const allowedHost=config.publicOrigin?host===new URL(config.publicOrigin).host:/^(127\.0\.0\.1|localhost):\d+$/.test(host);
     if (!allowedHost || (req.headers.origin && req.headers.origin !== expected) || req.headers["sec-fetch-site"] === "cross-site") return json(403, { error: "ORIGIN_DENIED" });
-    if (req.url === "/api/config" && req.method === "GET") return json(200, { mode: config.mode === "real" ? "real" : "mock", configured, model: config.mode === "real" ? config.model : undefined, detailReading: config.toolsVerified ?? capability(config).available });
+    if (req.url === "/api/config" && req.method === "GET") return json(200, { mode: config.mode === "real" ? "real" : "mock", configured, model: config.mode === "real" ? config.model : undefined, detailReading: config.toolsVerified ?? capability(config).available, handoff: !!config.handoff, contact: !!config.notify });
+    const url = new URL(req.url, "http://local.invalid");
+    if (url.pathname === "/api/mcp") {
+      // Called by the owner's agent, never by a browser. Bearer header preferred; ?key= for agents that cannot set headers.
+      const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? url.searchParams.get("key") ?? undefined;
+      if (!mcp || !tokenMatches(config.mcpToken, bearer)) return json(404, { error: "NOT_FOUND" });
+      if (req.method !== "POST") { res.writeHead(405, { Allow: "POST" }); res.end(); return; }
+      try {
+        const body = await readJson(req);
+        const out = Array.isArray(body) ? (await Promise.all(body.map(mcp))).filter(Boolean) : await mcp(body);
+        if (!out || (Array.isArray(out) && !out.length)) { res.writeHead(202); res.end(); return; }
+        return json(200, out);
+      } catch { return json(400, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }); }
+    }
+    if (url.pathname === "/api/replies" && req.method === "GET") {
+      const conversation = url.searchParams.get("conversation"), after = url.searchParams.get("after") ?? "", locale = url.searchParams.get("locale") ?? "zh";
+      if (!config.handoff) return json(200, { messages: [] });
+      if (!conversationId(conversation) || after.length > 40) return json(400, { error: "INPUT_LIMIT" });
+      try {
+        const rows = (await config.handoff.messages(conversation, after)).filter(m => m.role === "owner");
+        return json(200, { messages: rows.map(m => { const text = ownerLabel(locale) + m.text; return { id: m.id, created: m.created, text, signature: signer.sign(conversation, text) }; }) });
+      } catch { return json(503, { error: "CLOUD_UNAVAILABLE" }); }
+    }
+    if (url.pathname === "/api/handoff" && req.method === "POST") {
+      // A visitor asks for the owner in person, optionally leaving a way to reach them.
+      // Only offered when the owner will actually be told.
+      if (!config.notify) return json(404, { error: "NOT_FOUND" });
+      const now = Date.now(); handoffs = handoffs.filter(t => t > now - 60000);
+      if (handoffs.length >= 5) return json(429, { error: "RATE_LIMIT" });
+      handoffs.push(now);
+      try {
+        const b = await readJson(req, 16384);
+        const field = (v: unknown, max: number) => typeof v === "string" && v.length <= max ? neutralize(v.trim()) : undefined;
+        const message = field(b?.message, 2000), name = field(b?.name, 80) ?? "", contact = field(b?.contact, 200) ?? "";
+        if (!b || Object.keys(b).some(k => !["conversation", "message", "name", "contact"].includes(k)) || !conversationId(b.conversation) || !message) return json(400, { error: "INPUT_LIMIT" });
+        const note = [name && "称呼/Name: " + name, contact && "联系方式/Contact: " + contact, message].filter(Boolean).join("\n");
+        await config.handoff?.add(b.conversation, "visitor_note", note);
+        const notified = await config.notify?.({ reason: contact ? "contact_left" : "asked_for_human", conversation: b.conversation, visitor: message, contact: [name, contact].filter(Boolean).join(" · ") }) ?? false;
+        return json(200, { ok: true, notified });
+      } catch (e) { return json(e instanceof Error && e.message === "INPUT_LIMIT" ? 400 : 503, { error: e instanceof Error && e.message === "INPUT_LIMIT" ? "INPUT_LIMIT" : "CLOUD_UNAVAILABLE" }); }
+    }
     if (req.url !== "/api/chat" || req.method !== "POST") return json(404, { error: "NOT_FOUND" });
     if (config.mode !== "real" || !configured) return json(503, { error: "NOT_CONFIGURED" });
     if (!req.headers["content-type"]?.startsWith("application/json")) return json(415, { error: "INPUT_LIMIT" });
@@ -64,6 +118,7 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
     res.on("close", cancel);
     const emit = (value: unknown) => { if (!res.destroyed) res.write(JSON.stringify(value) + "\n"); };
     let auditSavedAt=0;let auditId:string|undefined; let audit:Record<string,unknown>={};
+    let notice:Parameters<NonNullable<Config["notify"]>>[0]|undefined;
     try {
       let raw = "", bytes = 0;
       req.setEncoding("utf8");
@@ -145,6 +200,8 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       const rows=roundMetrics as {usage?:Record<string,number>}[];
       const usage=rows.every(r=>r.usage&&['prompt_tokens','completion_tokens','total_tokens'].every(k=>typeof r.usage![k]==='number'))?Object.fromEntries(['prompt_tokens','completion_tokens','total_tokens'].map(k=>[k,rows.reduce((n,r)=>n+r.usage![k],0)])):undefined;
       emit({type:'done',routing,...(guarded?{responseKind:'guarded'}:{}),sources:guarded?[]:[...new Set(sources.filter(s=>text.includes(s)))],model:returnedModel,requestedModel:config.model,durationMs:Date.now()-started,firstTokenMs,usage,rounds:roundMetrics,finish:guarded?'stop':finish,signature:signer.sign(conversation,shown)});
+      const reason=!guarded&&config.notify?notifyReason(routing.intent,messages.at(-1)!.content,shown):undefined;
+      if(reason){notice={reason,conversation,visitor:messages.at(-1)!.content,assistant:shown};audit.notified=reason;}
       audit.status='complete';audit.usage=usage;audit.durationMs=Date.now()-started;audit.firstTokenMs=firstTokenMs;audit.model=returnedModel;
       // End after the final audit write in finally.
     } catch (e) {
@@ -154,6 +211,6 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       audit.durationMs=Date.now()-now;
       audit.status=controller.signal.aborted&&!timeout?"stopped":"error";audit.error=error;
       if (!res.destroyed && !res.writableEnded) { if (res.headersSent) { emit({ type: "error", error }); res.end(); } else json(["DAILY_LIMIT","RATE_LIMIT","CONCURRENCY_LIMIT"].includes(error)?429:error.endsWith("LIMIT") ? 400 : 502, { error }); }
-    } finally { if(auditId) { try { await (config.auditStore??getStore()).finishRun(auditId,audit); } catch { /* Never log conversation or credentials on a storage error. */ } } clearTimeout(timer); clearTimeout(idle); controller.abort(); res.off("close", cancel); active--; if(!res.writableEnded&&!res.destroyed)res.end(); }
+    } finally { if(notice&&conversationId(notice.conversation)) { try { await config.notify!(notice); } catch { /* A failed notice never affects the visitor. */ } } if(auditId) { try { await (config.auditStore??getStore()).finishRun(auditId,audit); } catch { /* Never log conversation or credentials on a storage error. */ } } clearTimeout(timer); clearTimeout(idle); controller.abort(); res.off("close", cancel); active--; if(!res.writableEnded&&!res.destroyed)res.end(); }
   };
 }

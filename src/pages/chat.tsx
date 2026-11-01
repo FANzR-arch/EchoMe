@@ -64,7 +64,8 @@ function ChatPageContent() {
   useEffect(() => { if (portfolio) setLocale(host.locale); }, [host.locale, setLocale]);
   const [scenario, setScenario] = useState<Scenario>("normal"),
     [history, setHistory] = useState(false),
-    [contact, setContact] = useState(false);
+    [contact, setContact] = useState(false),
+    [sending, setSending] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(
     data.current,
   );
@@ -72,6 +73,8 @@ function ChatPageContent() {
   const embedded = new URLSearchParams(location.search).get("embed") === "1";
   const parentOrigin = trustedParentOrigin();
   const conversation = data.conversations.find((c) => c.id === conversationId);
+  // A real message to the owner when hand-off is configured; otherwise the local demo form.
+  const live = modelState.contact === true;
   useEffect(() => {
     if (conversation || creating.current) return;
     creating.current = true;
@@ -232,18 +235,33 @@ function ChatPageContent() {
       </Sheet>
       <Dialog open={contact} onOpenChange={setContact}>
         <DialogContent>
-          <DialogTitle>{t("留下一点想法", "Leave a thought")}</DialogTitle>
+          <DialogTitle>{live ? t(`留言给${ownerName.zh}本人`, `Message ${ownerName.en} directly`) : t("留下一点想法", "Leave a thought")}</DialogTitle>
           <DialogDescription>
-            {t(
-              "这是演示留言。不要填写真实私人信息；不会发送通知。",
-              "Demo only. Do not enter private information. No notification is sent.",
-            )}
+            {live
+              ? t(`${ownerName.zh}会在手机上收到提醒，回复会出现在这段对话里。留下联系方式，他不在线时也能找到你。`, `${ownerName.en} gets a phone notification. Replies appear in this chat; leave a contact in case you're offline.`)
+              : t(
+                  "这是演示留言。不要填写真实私人信息；不会发送通知。",
+                  "Demo only. Do not enter private information. No notification is sent.",
+                )}
           </DialogDescription>
           <form
             className="form-stack"
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
+              if (live) {
+                if (sending) return;
+                setSending(true);
+                try {
+                  const r = await fetch("/api/handoff", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation: conversationId, name: String(f.get("name") ?? ""), contact: String(f.get("address") ?? ""), message: String(f.get("message") ?? "") }) });
+                  if (!r.ok) throw new Error();
+                  setContact(false);
+                  toast.success(t(`已转给${ownerName.zh}本人，回复会出现在这里。`, `Sent to ${ownerName.en}. Replies will appear here.`));
+                } catch {
+                  toast.error(t("没有发出去，请稍后再试。", "Couldn't send. Try again later."));
+                } finally { setSending(false); }
+                return;
+              }
               await updateData((d) => {
                 const c = d.conversations.find((c) => c.id === conversationId);
                 if (c) {
@@ -280,15 +298,15 @@ function ChatPageContent() {
               <Input
                 name="address"
                 maxLength={200}
-                placeholder="demo@example.invalid"
+                placeholder={live ? t("邮箱、微信或手机号", "Email, WeChat or phone") : "demo@example.invalid"}
               />
             </label>
             <label>
               {t("想聊什么？", "What is on your mind?")}
               <Textarea name="message" required maxLength={2000} />
             </label>
-            <Button type="submit">
-              {t("保存演示留言", "Save demo message")}
+            <Button type="submit" disabled={sending}>
+              {live ? t("发送", "Send") : t("保存演示留言", "Save demo message")}
             </Button>
           </form>
         </DialogContent>
