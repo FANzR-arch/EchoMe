@@ -4,6 +4,13 @@
 
 *EchoMe adds an AI assistant to your personal website. It answers visitors only from what you published, embeds with one line, and is hardened against prompt injection. MIT licensed.*
 
+![EchoMe：为你的网站增加一个 AI 助手](docs/media/echome-cover.jpg)
+
+- 访客在网站上直接提问，回答只依据你公开写过的资料；资料之外，明确告知无法确认。
+- 提示词注入、伪造的历史消息，由服务端代码拦截。
+- 合作咨询经 Grok Bot 推送到手机，回复一句，访客端显示「本人回复」。
+- 三步接入：一键部署到 Vercel → 替换为你的资料 → 嵌入一行代码；也可以交给 Claude Code、Codex 等 AI 助手安装。
+
 ## 最省事：让你的 AI 帮你装
 
 如果你有 Grok Bot、Claude Code、Codex 这类能操作电脑的 AI 助手，把下面这句话发给它：
