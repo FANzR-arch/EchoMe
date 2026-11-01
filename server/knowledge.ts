@@ -19,9 +19,9 @@ export function validateDocument(d: Document) {
   if (!d || typeof d.id !== 'string' || !d.id || typeof d.title !== 'string' || !d.title || d.title.length > 400 || !['website','personal','research'].includes(d.kind) || !Array.isArray(d.urls) || d.urls.length > 32 || !d.urls.every(validUrl) || (d.kind !== 'personal' && !d.urls.length) || typeof d.text !== 'string' || !d.text.trim() || d.text.length > 100000 || typeof d.updated !== 'string' || typeof d.file !== 'string') throw Error('Invalid knowledge document');
   return d;
 }
-export function loadDocuments(directory = knowledgeRoot(), overrides = true): Document[] {
+export function loadDocuments(directory = knowledgeRoot(), overrides = true, useRelease = true): Document[] {
   const root=knowledgeRoot();
-  const release=directory===root?cloudRelease():undefined;
+  const release=directory===root&&useRelease?cloudRelease():undefined;
   if(release)return release.documents.map(validateDocument).filter(d=>d.enabled!==false);
   const snapshot = JSON.parse(read(join(directory, 'website/snapshot.json'), 8_000_000));
   if (snapshot.schema !== 1 || !Array.isArray(snapshot.documents) || snapshot.documents.length > 2000) throw Error('Invalid website snapshot');

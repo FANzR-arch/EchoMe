@@ -1,11 +1,13 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 const directory=mkdtempSync(join(tmpdir(),'pai-workbench-'));
 process.env.PAI_DATA_DIR=directory;
+// Never touch the real deploy/knowledge-release.json.
+process.env.PAI_RELEASE_PATH=join(directory,'release','knowledge-release.json');
 const {getStore,hash}=await import('./workbench-store.ts');
 const {createWorkbench,listAssets}=await import('./workbench-api.ts');
 const {loadDocuments}=await import('./knowledge.ts');
@@ -38,7 +40,7 @@ test('publish, conflict and rollback affect runtime without rewriting source fil
  assert.match(getSystemRules(),/回答优先简短/);
 }));
 test('review never changes original answer; manual proposal does not publish until approved',async()=>fixture(async(base,token)=>{
- const runId=store.startRun({input:[{role:'user',content:'Lin 做什么？'}],response:'原始回答',status:'complete',selected:[]},'visitor-one');
+ const runId=store.startRun({input:[{role:'user',content:'Phil 做什么？'}],response:'原始回答',status:'complete',selected:[]},'visitor-one');
  assert.equal((await post(base,token,'review',{id:runId,note:'待纠正',corrected:'已确认的说法',reviewed:true})).status,200);
  assert.equal(store.runs()[0].response,'原始回答');assert.equal(store.runs()[0].review.corrected,'已确认的说法');
  const a=listAssets(store).find(a=>a.key==='doc:profile')!;
@@ -88,4 +90,32 @@ test('interview confirmation is explicit, bound to the visible latest proposal a
  assert.equal((await post(base,token,'interview-confirm',{id:'wrong'})).status,400);assert.equal(store.asset(p.target),undefined);
  assert.equal((await post(base,token,'interview-confirm',{id})).status,200);assert.equal(store.asset(p.target)?.content,p.content);
  assert.equal((await post(base,token,'interview-confirm',{id})).status,400);
+}));
+
+test('release status lists unpublished changes; publish needs confirmation and writes only the release file',async()=>fixture(async(base,token)=>{
+ const file=process.env.PAI_RELEASE_PATH!;assert.ok(file.startsWith(directory));
+ const get=async(path:string)=>(await fetch(base+'/api/workbench/'+path,{headers:{'Sec-Fetch-Site':'same-origin','X-PAI-Admin':token}})).json();
+ const initial=await get('release-status');
+ assert.equal(initial.publishedAt,undefined);assert.ok(initial.pending>0);assert.ok(initial.documents.every((d:{state:string})=>d.state==='new'));
+ assert.equal((await post(base,token,'publish',{})).status,400);assert.equal(existsSync(file),false);
+ const published=await post(base,token,'publish',{confirm:true});assert.equal(published.status,200);
+ const status=await published.json();assert.ok(status.publishedAt);assert.equal(status.pending,0);
+ const release=JSON.parse(readFileSync(file,'utf8'));assert.equal(release.schema,1);assert.equal(release.provider.toolsVerified,false);
+ assert.ok(release.documents.some((d:{id:string})=>d.id==='profile'));
+ // An over-budget core blocks publishing and leaves the previous release in place.
+ const big={key:'doc:manual:core-overflow',title:'超限',kind:'personal' as const,content:'x'.repeat(4100),urls:[],tier:'core' as const,enabled:true};
+ store.publish(big,{...big,content:''},hash({...big,content:''}));
+ const before=readFileSync(file,'utf8');
+ const over=await post(base,token,'publish',{confirm:true});assert.equal(over.status,400);assert.equal((await over.json()).error,'CORE_LIMIT');
+ assert.equal(readFileSync(file,'utf8'),before);
+ const current=store.asset(big.key)!;store.publish({...current,enabled:false},current,hash(current));
+ const a=listAssets(store).find(a=>a.key==='doc:profile')!;
+ assert.equal((await post(base,token,'save',{asset:{...a,content:a.content+'\n发布后的本机修改'},base:hash(a)})).status,200);
+ const changed=await get('release-status');assert.equal(changed.documents.find((d:{id:string})=>d.id==='profile').state,'changed');assert.equal(changed.pending,1);
+}));
+test('a correction saved as a new answer is marked as coming from a conversation',async()=>fixture(async(base,token)=>{
+ const content='问：Phil 做什么？\n答：主人确认的说法。';
+ const r=await post(base,token,'new',{title:'纠正：Phil 做什么？',content,kind:'personal',urls:[],origin:'correction'});
+ assert.equal(r.status,200);const {key}=await r.json();assert.match(key,/^doc:manual:fix-/);
+ assert.equal(loadDocuments().find(d=>'doc:'+d.id===key)?.text,content);
 }));

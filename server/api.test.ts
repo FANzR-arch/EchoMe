@@ -87,18 +87,18 @@ test('API injects bounded selected knowledge and only accepts its source links',
 const toolFrame=(args:string)=>'data: '+JSON.stringify({choices:[{delta:{tool_calls:[{index:0,id:'call_1',type:'function',function:{name:'read_knowledge',arguments:args}}]},finish_reason:'tool_calls'}]})+'\n\ndata: [DONE]\n\n';
 test('one tool round reads only selected IDs and returns actual source URLs',async()=>{
  let calls=0;
- await fixture(async url=>{const body=await(await post(url)).text();assert.equal(calls,2);assert.match(body,/"type":"done"/);assert.match(body,/example.com/);},(async(_url,init)=>{calls++;const p=JSON.parse(String(init?.body));if(calls===1){assert.equal(p.tools[0].function.name,'read_knowledge');return stream(toolFrame('{"ids":["profile"]}'));}assert.equal(p.tools,undefined);assert.equal(p.messages.at(-1).role,'tool');assert.match(p.messages.at(-1).content,/林夏/);return stream(frame('资料 https://example.com/','stop')+'data: [DONE]\n\n');}) as typeof fetch,limits,{...config,toolsVerified:true});
+ await fixture(async url=>{const body=await(await post(url)).text();assert.equal(calls,2);assert.match(body,/"type":"done"/);assert.match(body,/example.com/);},(async(_url,init)=>{calls++;const p=JSON.parse(String(init?.body));if(calls===1){assert.equal(p.tools[0].function.name,'read_knowledge');return stream(toolFrame('{"ids":["project:pocket-timer"]}'));}assert.equal(p.tools,undefined);assert.equal(p.messages.at(-1).role,'tool');assert.match(p.messages.at(-1).content,/阿哲/);return stream(frame('资料 https://example.com/','stop')+'data: [DONE]\n\n');}) as typeof fetch,limits,{...config,toolsVerified:true});
 });
 test('invalid tool IDs fail without a second request',async()=>{
  let calls=0;await fixture(async url=>{const r=await post(url);assert.match(await r.text(),/INVALID_TOOL_CALL/);assert.equal(calls,1);},(async()=>{calls++;return stream(toolFrame('{"ids":["../../secret"]}'));}) as typeof fetch,limits,{...config,toolsVerified:true});
 });
 test('second tool round is rejected',async()=>{
- let calls=0;await fixture(async url=>{assert.match(await(await post(url)).text(),/INVALID_TOOL_CALL/);assert.equal(calls,2);},(async()=>{calls++;return stream(toolFrame('{"ids":["profile"]}'));}) as typeof fetch,limits,{...config,toolsVerified:true});
+ let calls=0;await fixture(async url=>{assert.match(await(await post(url)).text(),/INVALID_TOOL_CALL/);assert.equal(calls,2);},(async()=>{calls++;return stream(toolFrame('{"ids":["project:pocket-timer"]}'));}) as typeof fetch,limits,{...config,toolsVerified:true});
 });
 
 test('cancellation during second tool request aborts the entire flow',async()=>{
  let calls=0,aborted=false;
- await fixture(async url=>{const controller=new AbortController();const response=await post(url,question,controller.signal);await response.body!.getReader().read();controller.abort();await new Promise(r=>setTimeout(r,70));assert.equal(calls,2);assert.equal(aborted,true);},(async(_url,init)=>{calls++;if(calls===1)return stream(toolFrame('{"ids":["profile"]}'));init?.signal?.addEventListener('abort',()=>{aborted=true;});return new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(frame('read result partial')));}}));}) as typeof fetch,limits,{...config,toolsVerified:true});
+ await fixture(async url=>{const controller=new AbortController();const response=await post(url,question,controller.signal);await response.body!.getReader().read();controller.abort();await new Promise(r=>setTimeout(r,70));assert.equal(calls,2);assert.equal(aborted,true);},(async(_url,init)=>{calls++;if(calls===1)return stream(toolFrame('{"ids":["project:pocket-timer"]}'));init?.signal?.addEventListener('abort',()=>{aborted=true;});return new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(frame('read result partial')));}}));}) as typeof fetch,limits,{...config,toolsVerified:true});
 });
 test('tool results that exceed total context fail before the next model call',async()=>{
  // Measure the first request, then allow only a little more: the tool result must not fit.
@@ -126,7 +126,7 @@ test('thinking tool flow carries private reasoning only to provider and caps bud
  calls++;const p=JSON.parse(String(init?.body));
  if(calls===1)return Response.json({choices:[{finish_reason:'stop',message:{content:'{"intent":"project","mode":"thinking"}'}}]});
  assert.equal(p.thinking.type,'enabled');assert.equal(p.reasoning_effort,'low');
- if(calls===2){assert.equal(p.max_tokens,1024);return stream('data: '+JSON.stringify({choices:[{delta:{reasoning_content:'internal reasoning'}}]})+'\n\n'+toolFrame('{"ids":["profile"]}'));}
+ if(calls===2){assert.equal(p.max_tokens,1024);return stream('data: '+JSON.stringify({choices:[{delta:{reasoning_content:'internal reasoning'}}]})+'\n\n'+toolFrame('{"ids":["project:pocket-timer"]}'));}
  assert.equal(p.max_tokens,2048);assert.equal(p.messages.at(-2).reasoning_content,'internal reasoning');return stream(frame('简洁结论','stop')+'data: [DONE]\n\n');
  }) as typeof fetch,limits,{...config,baseUrl:'https://api.deepseek.com',intentRouting:true,toolsVerified:true});
 });

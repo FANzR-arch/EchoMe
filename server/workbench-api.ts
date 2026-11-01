@@ -10,6 +10,7 @@ import { launchProposal, cliAvailable, proposalPrompt } from './workbench-cli.ts
 import {currentInterview,saveInterview,makeInterviewJob,settleInterview} from './interview.ts';
 import {capability,checkCapability,type Provider} from './capability.ts';
 import {knowledgeRoot} from './owner.ts';
+import {releaseStatus,buildRelease,writeRelease} from './publish.ts';
 export function listAssets(store=getStore()):Asset[]{
   const baseline:Asset[]=[...['persona','rules'].map(key=>({key,title:key==='persona'?'助手人设':'回答规则',kind:key as 'persona'|'rules',content:readFileSync(resolve(knowledgeRoot(),key+'.md'),'utf8').trim(),urls:[]})),coreDraft(),...loadDocuments(undefined,false).map(d=>({tier:'detail' as const,enabled:true,sourceHash:hash(d),key:'doc:'+d.id,title:d.title,kind:d.kind,content:d.text,urls:d.urls}))];
   for(const a of store.assets()){const i=baseline.findIndex(b=>b.key===a.key);if(i>=0)baseline[i]=a;else if(a.kind!=='website'&&!a.key.startsWith('doc:approved:'))baseline.push(a);}
@@ -43,7 +44,8 @@ export function createWorkbench(store=getStore(),runner=launchProposal,provider:
     if(req.headers['x-pai-admin']!==token)return json(403,{error:'INVALID_SESSION'});
     try{
       if(req.method==='GET'&&req.url==='/api/workbench/interview')return json(200,settleInterview(store,currentInterview(store)));
-      if(req.method==='GET'&&req.url==='/api/workbench/state')return json(200,{assets:listAssets(store).map(a=>{const docs=loadDocuments(undefined,false);const source=a.kind==='website'?docs.find(d=>'doc:'+d.id===a.key):undefined;const sourceChanged=!!a.sourceHash&&(source?hash(source)!==a.sourceHash:a.sourceIds?hash(docs.filter(d=>a.sourceIds!.includes(d.id)))!==a.sourceHash:false);return {...a,base:hash(a),sourceChanged,sourceMissing:!!a.sourceIds?.some(id=>!docs.some(d=>d.id===id)),source:source?{content:source.text,urls:source.urls}:undefined};}),runs:store.runs(),revisions:store.revisions(),proposals:store.proposals().filter(p=>!p.target.startsWith('interview:')).map(p=>p.status==='running'&&!running.has(p.id)?{...p,status:'failed',error:'SERVER_RESTARTED'}:p),cli:cliAvailable(),detailReading:capability(provider)});
+      if(req.method==='GET'&&req.url==='/api/workbench/release-status')return json(200,releaseStatus());
+      if(req.method==='GET'&&req.url==='/api/workbench/state'){const docs=loadDocuments(undefined,false);return json(200,{assets:listAssets(store).map(a=>{const source=a.kind==='website'?docs.find(d=>'doc:'+d.id===a.key):undefined;const sourceChanged=!!a.sourceHash&&(source?hash(source)!==a.sourceHash:a.sourceIds?hash(docs.filter(d=>a.sourceIds!.includes(d.id)))!==a.sourceHash:false);return {...a,base:hash(a),sourceChanged,sourceMissing:!!a.sourceIds?.some(id=>!docs.some(d=>d.id===id)),source:source?{content:source.text,urls:source.urls}:undefined};}),runs:store.runs(),revisions:store.revisions(),proposals:store.proposals().filter(p=>!p.target.startsWith('interview:')).map(p=>p.status==='running'&&!running.has(p.id)?{...p,status:'failed',error:'SERVER_RESTARTED'}:p),cli:cliAvailable(),detailReading:capability(provider)});}
       if(req.method!=='POST'||!req.headers['content-type']?.startsWith('application/json'))return json(405,{error:'METHOD_NOT_ALLOWED'});
       let raw='';req.setEncoding('utf8');for await(const part of req){raw+=part;if(raw.length>80000)throw Error('INPUT_LIMIT');}
       const body=JSON.parse(raw);
@@ -77,8 +79,15 @@ export function createWorkbench(store=getStore(),runner=launchProposal,provider:
         case '/api/workbench/save': {const id=publish(body.asset,body.base);return json(200,{id});}
         case '/api/workbench/new': {
           if(!['personal','research'].includes(body.kind))throw Error('INVALID_ASSET');
-          const a:Asset={key:'doc:manual:'+randomUUID(),title:body.title,content:body.content,kind:body.kind,urls:body.urls,tier:'detail',enabled:true};validateAsset(a);
+          // Corrections made from a conversation keep a recognisable key so the owner can see where they came from.
+          const a:Asset={key:'doc:manual:'+(body.origin==='correction'?'fix-':'')+randomUUID(),title:body.title,content:body.content,kind:body.kind,urls:body.urls,tier:'detail',enabled:true};validateAsset(a);
           store.publish(a,{...a,content:''},hash({...a,content:''}));return json(200,{key:a.key});
+        }
+        case '/api/workbench/publish': {
+          // Writes the release file a deployment answers from; it never deploys by itself.
+          if(body.confirm!==true)throw Error('CONFIRM_REQUIRED');
+          writeRelease(buildRelease({baseUrl:provider.baseUrl,model:provider.model},capability(provider).available===true));
+          return json(200,releaseStatus());
         }
         case '/api/workbench/rollback': {const revision=store.revisions().find(r=>r.id===body.id);if(!revision)throw Error('NOT_FOUND');publish(revision.before.content?revision.before:{...revision.after,enabled:false},body.base);return json(200,{ok:true});}
         case '/api/workbench/review': {
@@ -107,7 +116,7 @@ export function createWorkbench(store=getStore(),runner=launchProposal,provider:
         case '/api/workbench/proposal-cancel': {const p=store.proposal(body.id);if(!p||p.status==='applied')throw Error('INVALID_PROPOSAL');running.get(p.id)?.();running.delete(p.id);store.saveProposal({...p,status:'cancelled'});return json(200,{ok:true});}
         default:return json(404,{error:'NOT_FOUND'});
       }
-    }catch(e){const message=e instanceof Error?e.message:'';const allowed=['CLOUD_UNAVAILABLE','CLOUD_NOT_CONFIGURED','CONFLICT','INVALID_ASSET','NOT_FOUND','INPUT_LIMIT','INVALID_PROPOSAL','CONFIRM_CLI_REQUIRED','CLI_BUSY','CLI_NOT_FOUND','CONTEXT_LIMIT','CORE_LIMIT','NOT_CONFIGURED'];return json(message==='CONFLICT'?409:400,{error:allowed.includes(message)?message:'WORKBENCH_ERROR'});}
+    }catch(e){const message=e instanceof Error?e.message:'';const allowed=['CONFIRM_REQUIRED','CLOUD_UNAVAILABLE','CLOUD_NOT_CONFIGURED','CONFLICT','INVALID_ASSET','NOT_FOUND','INPUT_LIMIT','INVALID_PROPOSAL','CONFIRM_CLI_REQUIRED','CLI_BUSY','CLI_NOT_FOUND','CONTEXT_LIMIT','CORE_LIMIT','NOT_CONFIGURED'];return json(message==='CONFLICT'?409:400,{error:allowed.includes(message)?message:'WORKBENCH_ERROR'});}
   };
   return Object.assign(handler,{dispose(){for(const [id,cancel] of running){cancel();const p=store.proposal(id);if(p?.status==='running')store.saveProposal({...p,status:'failed',error:'SERVER_RESTARTED'});}running.clear();}});
 }

@@ -32,7 +32,7 @@ import {
 import { useData } from "@/lib/data";
 import { usePreferences } from "@/lib/preferences";
 import { Badge } from "@/components/ui/badge";
-import { chatSiteUrl, siteTarget } from "@/lib/site";
+import { chatSiteUrl } from "@/lib/site";
 const navigation = [
   ["overview", "概览", "Overview", LayoutDashboard],
   ["conversations", "会话", "Conversations", MessagesSquare],
@@ -53,7 +53,7 @@ function AdminNavigation() {
         <SidebarGroup>
           <SidebarGroupLabel>{t("工作空间", "WORKSPACE")}</SidebarGroupLabel>
           <SidebarMenu>
-            {(siteTarget === "admin" ? [["interview","和我的 AI 聊聊","Talk to my AI",MessagesSquare],["knowledge","资料与记录","Knowledge & history",BookOpen]] as const : navigation).map(([path, zh, en, Icon]) => (
+            {navigation.map(([path, zh, en, Icon]) => (
               <SidebarMenuItem key={path}>
                 <SidebarMenuButton
                   isActive={location.pathname.endsWith(path)}
@@ -84,8 +84,8 @@ function AdminNavigation() {
         </Link>
         <div className="sidebar-note">
           <span className="status-dot" />
-          {siteTarget === "admin" ? t("本机工作台 · CLI 按需调用", "LOCAL WORKSPACE · CLI ON DEMAND") : t("仅本地 · 不调用模型", "LOCAL ONLY · NO MODEL CALLS")}
-          <p>{siteTarget === "admin" ? t("真实资料与审核保存在本机", "Knowledge and reviews stored locally") : t("演示数据不跨设备同步", "No cross-device sync")}</p>
+          {t("仅本地 · 不调用模型", "LOCAL ONLY · NO MODEL CALLS")}
+          <p>{t("演示数据不跨设备同步", "No cross-device sync")}</p>
         </div>
       </SidebarFooter>
     </Sidebar>
@@ -101,11 +101,11 @@ export default function AdminLayout() {
           <SidebarTrigger />
           <span>{t("个人助手工作台", "Personal assistant workspace")}</span>
           <div className="header-spacer" />
-          {siteTarget === "admin" ? <Badge variant="outline">{t("本机管理", "Local admin")}</Badge> : <DemoBadge />}
+          <DemoBadge />
           <PreferencesControls />
         </header>
         <div className="admin-demo-note">
-          {siteTarget === "admin" && !/security|notifications/.test(location.pathname) ? t("仅供本机主人使用 · 无线上登录保护，不可对外开放。", "Local owner only · No production login; do not expose publicly.") : t(
+          {t(
             "本机工作台 · 资料与审核实际保存。安全设置、留言和通知页面仍是演示，不控制服务端。尚无管理员登录，不可公开部署。",
             "Local admin demo · Authentication and shared database not connected. Do not deploy publicly or enter private data.",
           )}

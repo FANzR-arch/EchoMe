@@ -35,7 +35,7 @@ test("independent admin embeds cross-origin visitor chat with trusted close and 
 }) => {
   await page.goto("http://127.0.0.1:5175/");
   await expect(
-    page.getByRole("heading", { name: "聊一聊，让 AI 更了解你。" }),
+    page.getByRole("heading", { name: "待处理", exact: true }),
   ).toBeVisible();
   await page.goto("http://127.0.0.1:5175/chat");
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();

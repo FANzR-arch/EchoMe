@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ChatModelAdapter } from "@assistant-ui/react";
 import type { Locale } from "./data";
-import { siteTarget } from "./site";
 export type ModelState = { mode: "real" | "mock" | "unavailable" | "loading"; configured?: boolean; model?: string };
 export function useModelState() {
-  const [state, setState] = useState<ModelState>({ mode: siteTarget === "admin" ? "mock" : "loading" });
+  const [state, setState] = useState<ModelState>({ mode: "loading" });
   useEffect(() => {
-    if (siteTarget === "admin") return;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     fetch("/api/config", { signal: controller.signal }).then(async r => {

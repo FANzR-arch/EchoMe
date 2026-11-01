@@ -1,5 +1,7 @@
 # Vercel + Supabase：低访问量上线方案
 
+只想让聊天上线？用 README 的一键部署即可，Supabase 是可选的。本文讲的是完整方案：本机审核后发布资料包，加上线上对话存档。
+
 公开聊天和 API 在 Vercel；线上审核记录在 Supabase。私人工作台、Codex CLI、本机 SQLite 继续留在电脑，不公开管理接口。
 
 ## 费用与容量

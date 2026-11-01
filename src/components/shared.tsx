@@ -24,7 +24,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       to={
-        siteTarget === "admin" ? "/admin/overview" : `/chat${location.search}`
+        siteTarget === "admin" ? "/admin/inbox" : `/chat${location.search}`
       }
       className="brand"
     >

@@ -11,9 +11,11 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "PAI_");
   if (env.PAI_MODE && !["mock", "real"].includes(env.PAI_MODE)) throw new Error("PAI_MODE must be mock or real");
   for(const key of ['PAI_CODEX_PROXY','PAI_CODEX_MODEL','PAI_CODEX_JS','PAI_SUPABASE_URL','PAI_SUPABASE_SECRET_KEY','PAI_OWNER_CONFIG','PAI_KNOWLEDGE_DIR'])if(env[key])process.env[key]=env[key];
-  // Vercel builds never see .env.local: there the reviewed release carries the owner identity.
-  const owner = process.env.VERCEL && existsSync("deploy/knowledge-release.json") ? validateOwner(JSON.parse(readFileSync("deploy/knowledge-release.json", "utf8")).owner) : loadOwner();
-  const api = createApi({ mode: target === "admin" ? "mock" : env.PAI_MODE || "mock", baseUrl: env.PAI_API_BASE_URL || "", model: env.PAI_MODEL || "", key: env.PAI_API_KEY || "", historySecret: env.PAI_HISTORY_SECRET || undefined, audit: true,intentRouting:true });
+  // Vercel builds never see .env.local: an exported release carries the owner; otherwise owner.config.json in the repo.
+  const releasePath = process.env.PAI_RELEASE_PATH || "deploy/knowledge-release.json";
+  const owner = process.env.VERCEL && existsSync(releasePath) ? validateOwner(JSON.parse(readFileSync(releasePath, "utf8")).owner) : loadOwner();
+  // The admin site answers from the local draft knowledge, so owner tests see unpublished changes.
+  const api = createApi({ mode: env.PAI_MODE || "mock", baseUrl: env.PAI_API_BASE_URL || "", model: env.PAI_MODEL || "", key: env.PAI_API_KEY || "", historySecret: env.PAI_HISTORY_SECRET || undefined, audit: true,intentRouting:true });
   return {
     plugins: [
       { name: "personal-ai-local-api", configureServer(server) { if(target === "admin") { const workbench=createWorkbench(undefined,undefined,{baseUrl:env.PAI_API_BASE_URL||'',model:env.PAI_MODEL||'',key:env.PAI_API_KEY||''}); server.httpServer?.once('close',()=>workbench.dispose()); server.middlewares.use((req,res,next)=>{res.setHeader("Content-Security-Policy", "frame-ancestors 'none'"); void workbench(req,res,next);}); } server.middlewares.use((req, res, next) => { void api(req, res, next); }); } },

@@ -10,9 +10,27 @@
 - **防提示词注入**：见下文「安全设计」。
 - **可选云端**：Vercel 部署公开聊天，Supabase 存审核记录并自动清理。
 
-## 快速开始
+## 一键部署
 
-需要 Node.js 24（使用内置 SQLite）。
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fpersonal-ai&project-name=personal-ai&repository-name=personal-ai&env=PAI_API_BASE_URL,PAI_MODEL,PAI_API_KEY&envDescription=OpenAI-compatible%20API%20base%20URL%2C%20model%20name%20and%20key%20for%20your%20assistant&envLink=https%3A%2F%2Fgithub.com%2FFANzR-arch%2Fpersonal-ai%23%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2)
+
+1. 点上面的按钮。Vercel 会把仓库复制到你的 GitHub，并让你填三项：
+   - `PAI_API_BASE_URL`：任何兼容 OpenAI Chat Completions 的接口地址，例如 `https://api.deepseek.com`
+   - `PAI_MODEL`：模型名，例如 `deepseek-flash`
+   - `PAI_API_KEY`：你的密钥，只存在 Vercel 的服务端环境变量里
+2. 部署完成后打开 `https://你的项目.vercel.app/install`，那里有为你这个站点生成好的嵌入代码，复制即可。
+3. 在你的 GitHub 仓库里改 `owner.config.json`（称呼、联系方式、允许嵌入的网站 `embedOrigins`）和 `knowledge/` 文件夹。每次提交，Vercel 自动重新部署。
+
+不需要数据库，也不需要在本机运行任何东西。可选项：
+
+- `PAI_HISTORY_SECRET`：一串长随机字符，用来给回复签名。不填会从 API 密钥派生。
+- `PAI_TOOLS=off`：你的模型不支持工具调用（function calling）时填。之后只依据“每次都带上”的资料回答。
+- `PAI_PUBLIC_ORIGIN`：用自定义域名或非生产地址访问时填完整 https 地址。默认用 Vercel 的生产域名，用别的地址访问会被拒绝。
+- Supabase（`PAI_SUPABASE_URL`、`PAI_SUPABASE_SECRET_KEY`）：想在线查看访客对话、跨实例共享额度时再接，见 [部署说明](docs/VERCEL-SUPABASE.md)。不接时，限流按单个函数实例计算。
+
+## 本机运行和私人工作台
+
+想在本机维护资料、审核对话、测试草稿，就在本机运行。需要 Node.js 24（使用内置 SQLite）。
 
 ```bash
 npm ci
@@ -21,7 +39,17 @@ npm run dev:chat    # 访客聊天 http://127.0.0.1:5174/chat
 npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 ```
 
-默认 `PAI_MODE=mock`，不调用任何模型，界面明确标记“模拟回答”。仓库自带的“林夏”是虚构示例主人。
+默认 `PAI_MODE=mock`，不调用任何模型，界面明确标记“模拟回答”。仓库自带的“阿哲”是虚构示例主人。
+
+私人工作台分五页：
+
+- **待处理**：AI 没答好的问题、等你确认的修改、未发布的改动，每条一个按钮处理。
+- **对话**：本机和线上（接了 Supabase 时）的对话合在一起，可筛“访客 / 我的测试”。每条回答都能“纠正这个回答”。
+- **它知道什么**：所有资料按关于我、作品、文章、联系分组，标明“每次都带上 / 需要时读取”和“已上线 / 未发布”。可以手动教它，也可以“让 AI 采访我”。
+- **名片与语气**：人设和回答规则。
+- **发布与嵌入**：把本机草稿发布成资料包（和 `npm run knowledge:export` 是同一件事），再 `npm run deploy:vercel` 上线；复制嵌入代码。在 `.env.local` 设 `VITE_CHAT_SITE_URL=https://你的聊天站`，这里显示的嵌入代码才是线上地址。
+
+右侧“试一试”用本机草稿资料回答，改完马上能测，不影响线上。纠正的内容先在本机生效，发布后才上线。
 
 ## 换成你自己
 
@@ -51,7 +79,7 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 
 ## 嵌入到你的网站
 
-部署聊天站后，在你的网站任意页面加一行：
+部署聊天站后（一键部署的话，`/install` 页面已经替你填好地址），在你的网站任意页面加一行：
 
 ```html
 <script src="https://YOUR-CHAT-SITE/embed.js" data-label="和我的 AI 聊聊" defer></script>
@@ -62,14 +90,15 @@ npm run dev:admin   # 私人工作台 http://127.0.0.1:5175（另开终端）
 两处必须允许你的网站来源，否则浏览器会拒绝嵌入：
 
 - `owner.config.json` 的 `embedOrigins`（聊天页据此信任父窗口消息）；
-- 部署响应头 `Content-Security-Policy: frame-ancestors`。用 Vercel 时运行 `npm run deploy:vercel`，它会从你的 owner 配置生成 `vercel.local.json` 再部署；直接用 `vercel.json` 时请手动改其中的 `https://example.com`。
+- 页面会核对真正嵌入它的网站（浏览器的 `ancestorOrigins` 或来源页），不在名单里就不显示聊天。仓库默认的响应头是 `frame-ancestors *`，靠这道页面检查把关；想在浏览器层面也锁死，运行 `npm run deploy:vercel`，它会按 `embedOrigins` 生成更严格的 `vercel.local.json` 再部署。
 
 聊天内容只留在聊天站自己的源里，从不通过窗口消息传给宿主页面。需要自己控制面板或做更深的转场集成，见 [双站与嵌入协议](docs/SEPARATE-SITES.md)。
 
 ## 部署
 
 - 只要公开聊天：`npm run build:chat`，`dist/chat` 是静态站，但需要一个运行 `server/api.ts` 的 Node 服务提供 `/api/chat`。
-- Vercel + Supabase：`npm run knowledge:export` 导出审核过的资料包（含 owner 身份），再 `npm run deploy:vercel`。环境变量、SQL 和清理任务见 [Vercel + Supabase 部署说明](docs/VERCEL-SUPABASE.md)。
+- 一键部署：见本文开头。线上直接读取仓库里的 `owner.config.json` 和 `knowledge/`。
+- 本机审核后发布：在私人工作台「发布与嵌入」点发布（或运行 `npm run knowledge:export`）生成资料包，再 `npm run deploy:vercel`。有资料包时线上以它为准，你的私人资料不必进 Git。环境变量、SQL 和清理任务见 [Vercel + Supabase 部署说明](docs/VERCEL-SUPABASE.md)。
 - 私人工作台永远不部署，管理接口只接受本机 loopback、同源请求和临时会话令牌。
 
 ## 安全设计

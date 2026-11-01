@@ -6,26 +6,27 @@
   "documents": [
     {
       "id": "profile",
-      "title": "林夏 个人介绍",
+      "title": "阿哲 个人介绍",
       "urls": [
         "https://example.com/"
       ],
       "kind": "website",
       "updated": "",
       "summary": "",
-      "text": "林夏（Lin）\n你好，我是林夏，一名独立设计师和前端开发者，关注小而好用的工具和清晰的界面。\n这里是示例个人站：记录项目、文章和一些正在进行的想法。\n本页内容为开源模板的虚构示例，请替换为你自己的资料。",
-      "file": "content/site/home.json"
+      "text": "阿哲（Phil）\n你好，我是阿哲，一名独立设计师和前端开发者，关注小而好用的工具和清晰的界面。\n这里是示例个人站：记录项目、文章和一些正在进行的想法。\n本页内容为开源模板的虚构示例，请替换为你自己的资料。",
+      "file": "content/site/home.json",
+      "tier": "core"
     },
     {
       "id": "profile-en",
-      "title": "About Lin",
+      "title": "About Phil",
       "urls": [
         "https://example.com/en/"
       ],
       "kind": "website",
       "updated": "",
       "summary": "",
-      "text": "Lin Xia\nHi, I’m Lin — an independent designer and front-end developer who likes small, useful tools and clear interfaces.\nThis is a sample personal site for the open-source template. Replace it with your own content.",
+      "text": "Phil\nHi, I’m Phil — an independent designer and front-end developer who likes small, useful tools and clear interfaces.\nThis is a sample personal site for the open-source template. Replace it with your own content.",
       "file": "content/site/home.en.json"
     },
     {
@@ -39,7 +40,8 @@
       "updated": "",
       "summary": "",
       "text": "公开邮箱：hello@example.com\n公开联系页：https://example.com/contact",
-      "file": "content/site/home.shared.json"
+      "file": "content/site/home.shared.json",
+      "tier": "core"
     },
     {
       "id": "project:pocket-timer",
@@ -50,7 +52,7 @@
       "kind": "website",
       "updated": "",
       "summary": "",
-      "text": "口袋计时 Pocket Timer\n一个帮助专注工作的极简番茄钟网页应用。\n角色：林夏负责交互设计和前端开发。\n特点：离线可用，数据只保存在浏览器本地。",
+      "text": "口袋计时 Pocket Timer\n一个帮助专注工作的极简番茄钟网页应用。\n角色：阿哲负责交互设计和前端开发。\n特点：离线可用，数据只保存在浏览器本地。",
       "file": "content/projects/pocket-timer.md"
     },
     {
@@ -62,7 +64,7 @@
       "kind": "website",
       "updated": "",
       "summary": "",
-      "text": "纸片笔记 Paper Notes\n一个用卡片整理读书摘录的小工具。\n角色：林夏独立完成设计与开发。\n特点：支持 Markdown 导出。",
+      "text": "纸片笔记 Paper Notes\n一个用卡片整理读书摘录的小工具。\n角色：阿哲独立完成设计与开发。\n特点：支持 Markdown 导出。",
       "file": "content/projects/paper-notes.md"
     },
     {

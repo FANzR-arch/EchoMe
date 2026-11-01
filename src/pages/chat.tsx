@@ -40,9 +40,23 @@ import {
 } from "@/lib/data";
 import { usePreferences } from "@/lib/preferences";
 import { toast } from "sonner";
-import { isDemoWorkspace, trustedParentOrigin } from "@/lib/site";
+import { isDemoWorkspace, trustedParentOrigin, untrustedFrame } from "@/lib/site";
 import { ownerName } from "@/lib/owner";
+function BlockedFrame() {
+  const { t } = usePreferences();
+  return (
+    <div className="empty-state" role="alert">
+      <h1>{t("这里不能嵌入聊天", "Chat can't be embedded here")}</h1>
+      <p>{t("把这个网站的地址加入 owner.config.json 的 embedOrigins，重新部署后就能嵌入。", "Add this site's origin to embedOrigins in owner.config.json and redeploy.")}</p>
+    </div>
+  );
+}
 export default function ChatPage() {
+  // Constant for the life of the page, so the early return never changes hook order.
+  if (untrustedFrame()) return <BlockedFrame />;
+  return <ChatPageContent />;
+}
+function ChatPageContent() {
   const modelState = useModelState();
   const data = useData(),
     { t, setTheme, setLocale } = usePreferences();

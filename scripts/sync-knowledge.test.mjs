@@ -9,8 +9,8 @@ function fixture(fn) {
  const write=(path,data)=>{mkdirSync(join(dir,path,'..'),{recursive:true});writeFileSync(join(dir,path),typeof data==='string'?data:JSON.stringify(data));};
  write('content/site/home.shared.json',{email:'public@example.org',social:{label:'public',url:'https://example.org/social'},private:'DO_NOT_IMPORT'});
  write('content/site/site.json',{siteUrl:'https://example.org'});
- write('content/site/home.json',{name:'Lin',intro:['公开介绍'],privateKey:'DO_NOT_IMPORT'});
- write('content/site/home.en.json',{name:'Lin',intro:['Public profile']});write('content/site/home-keywords.json',{zh:{设计:'设计方法'}});
+ write('content/site/home.json',{name:'Phil',intro:['公开介绍'],privateKey:'DO_NOT_IMPORT'});
+ write('content/site/home.en.json',{name:'Phil',intro:['Public profile']});write('content/site/home-keywords.json',{zh:{设计:'设计方法'}});
  write('content/site/catalog.json',{projects:[{presentation:'projects',items:[{id:'work-a',zh:'作品',en:'Work',description:{zh:'公开作品'},year:'2026',role:{zh:'设计'},privateKey:'SECRET_PROJECT'}]}],lab:[]});
  const article=(data,body='Published body')=>'---\n'+JSON.stringify({title:'Title',description:'Summary',slug:'article',pubDate:'2026-09-01',contentStatus:'full',draft:false,...data})+'\n---\n'+body;
  write('content/blog/public/index.md',article({},'Public <!--hidden secret--> ![private image](/private.png) [label](https://elsewhere.invalid)'));

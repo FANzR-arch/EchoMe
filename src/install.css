@@ -1,0 +1,12 @@
+.install-page { max-width: 680px; margin: 0 auto; padding: 72px 16px 64px; color: var(--foreground); }
+.install-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 12px; }
+.install-page h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 12px; font-weight: 500; }
+.install-lead { font-size: 16px; line-height: 1.7; color: var(--muted-foreground); margin: 0 0 24px; }
+.install-code { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.install-code code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.install-code button { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.install-code button:focus-visible, .install-steps a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.install-steps { margin: 32px 0 0; padding-left: 20px; display: grid; gap: 18px; font-size: 15px; line-height: 1.7; }
+.install-steps strong { display: block; font-weight: 500; }
+.install-steps a { display: inline-flex; align-items: center; gap: 4px; color: inherit; }
+.install-note { margin-top: 28px; font-size: 13px; color: var(--muted-foreground); }

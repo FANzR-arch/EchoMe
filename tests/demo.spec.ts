@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-async function ask(page: Page, text = "介绍一下林夏") {
+async function ask(page: Page, text = "介绍一下阿哲") {
   await page.getByRole("textbox", { name: "输入消息", exact: true }).fill(text);
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
 }
@@ -30,7 +30,7 @@ test("visitor chat persists; retry does not duplicate; feedback, contact and not
     "固定演示回答",
   );
   await page.getByRole("button", { name: "有问题", exact: true }).click();
-  await page.getByRole("button", { name: "联系林夏", exact: true }).click();
+  await page.getByRole("button", { name: "联系阿哲", exact: true }).click();
   await page
     .getByRole("textbox", { name: "想聊什么？" })
     .fill("一个演示合作想法");
@@ -63,7 +63,7 @@ test("cancel retains partial response; new chat and history work; HTML is inert"
   page,
 }) => {
   await page.goto("/chat");
-  await ask(page, "<img src=x onerror=alert(1)> 介绍一下林夏");
+  await ask(page, "<img src=x onerror=alert(1)> 介绍一下阿哲");
   await expect(page.getByRole("button", { name: "停止生成" })).toBeVisible();
   await page.getByRole("button", { name: "停止生成" }).click();
   await finished(page);
@@ -73,7 +73,7 @@ test("cancel retains partial response; new chat and history work; HTML is inert"
   await page.getByRole("button", { name: "历史", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "<img src=x onerror=alert(1)> 介绍一下林夏",
+      name: "<img src=x onerror=alert(1)> 介绍一下阿哲",
       exact: true,
     })
     .click();

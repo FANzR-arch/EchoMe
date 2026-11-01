@@ -19,19 +19,19 @@ export default defineConfig({
       command: "npm run dev -- --port 5173",
       url: "http://127.0.0.1:5173",
       reuseExistingServer: false,
-      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge" },
+      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge", PAI_RELEASE_PATH: ".workbench-test-data/knowledge-release.json" },
     },
     {
       command: "npm run dev:chat",
       url: "http://127.0.0.1:5174",
       reuseExistingServer: false,
-      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge" },
+      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge", PAI_RELEASE_PATH: ".workbench-test-data/knowledge-release.json" },
     },
     {
       command: "npm run dev:admin",
       url: "http://127.0.0.1:5175",
       reuseExistingServer: false,
-      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge" },
+      env: { PAI_MODE: "mock", PAI_DATA_DIR: ".workbench-test-data", PAI_OWNER_CONFIG: "owner.config.json", PAI_KNOWLEDGE_DIR: "knowledge", PAI_RELEASE_PATH: ".workbench-test-data/knowledge-release.json" },
     },
   ],
 });

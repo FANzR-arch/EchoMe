@@ -1,10 +1,10 @@
 {
-  "name": { "zh": "林夏", "en": "Lin" },
-  "pronoun": { "zh": "她", "en": "she" },
+  "name": { "zh": "阿哲", "en": "Phil" },
+  "pronoun": { "zh": "他", "en": "he" },
   "site": "https://example.com",
   "contact": {
     "url": "https://example.com/contact",
-    "label": { "zh": "林夏的联系页", "en": "Contact Lin" }
+    "label": { "zh": "阿哲的联系页", "en": "Contact Phil" }
   },
   "embedOrigins": ["https://example.com"]
 }

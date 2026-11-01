@@ -3,11 +3,11 @@ const base='http://127.0.0.1:5174';
 async function setup(page:Page) {
  await page.route('**/api/config', r=>r.fulfill({json:{mode:'real',configured:true,model:'transport-fixture'}}));
 }
-async function ask(page:Page,text='介绍一下林夏') {await page.getByRole('textbox',{name:'输入消息',exact:true}).fill(text);await page.getByRole('button',{name:'发送消息',exact:true}).click();}
+async function ask(page:Page,text='介绍一下阿哲') {await page.getByRole('textbox',{name:'输入消息',exact:true}).fill(text);await page.getByRole('button',{name:'发送消息',exact:true}).click();}
 const response=(text:string)=>JSON.stringify({type:'snapshot',text})+'\n'+JSON.stringify({type:'done',sources:['https://example.com/'],model:'transport-fixture',durationMs:12,usage:{prompt_tokens:10,completion_tokens:5,total_tokens:15},finish:'stop'})+'\n';
 test('real adapter: multi-turn, retry, provenance, refresh and draft restore',async({page})=>{
  await setup(page);const payloads:any[]=[];
- await page.route('**/api/chat',r=>{payloads.push(r.request().postDataJSON());return r.fulfill({contentType:'application/x-ndjson',body:response('根据公开资料，林夏是设计师。')});});
+ await page.route('**/api/chat',r=>{payloads.push(r.request().postDataJSON());return r.fulfill({contentType:'application/x-ndjson',body:response('根据公开资料，阿哲是设计师。')});});
  await page.goto(base+'/chat');await expect(page.getByText('真实 AI · 本机')).toBeVisible();await ask(page);
  await expect(page.getByTestId('assistant-message')).toContainText('AI 生成');await expect(page.getByRole('button',{name:'停止生成',exact:true})).toHaveCount(0);
  await ask(page,'他的兴趣呢？');await expect(page.getByTestId('assistant-message')).toHaveCount(2);await expect(page.getByRole('button',{name:'停止生成',exact:true})).toHaveCount(0);
@@ -15,7 +15,7 @@ test('real adapter: multi-turn, retry, provenance, refresh and draft restore',as
  await page.getByRole('button',{name:'重试回答',exact:true}).last().click();await expect(page.getByRole('button',{name:'停止生成',exact:true})).toHaveCount(0);await expect(page.getByTestId('assistant-message')).toHaveCount(2);expect(payloads[2].messages).toEqual(payloads[1].messages);
  await page.getByRole('textbox',{name:'输入消息',exact:true}).fill('未发送草稿');await page.reload();await expect(page.getByTestId('assistant-message')).toHaveCount(2);await expect(page.getByRole('textbox',{name:'输入消息',exact:true})).toHaveValue('未发送草稿');
  await page.getByRole('button',{name:'新对话',exact:true}).click();await expect(page.getByTestId('user-message')).toHaveCount(0);
- await page.getByRole('button',{name:'历史',exact:true}).click();await page.getByRole('button',{name:'介绍一下林夏',exact:true}).click();await expect(page.getByTestId('assistant-message')).toHaveCount(2);
+ await page.getByRole('button',{name:'历史',exact:true}).click();await page.getByRole('button',{name:'介绍一下阿哲',exact:true}).click();await expect(page.getByTestId('assistant-message')).toHaveCount(2);
 });
 test('real adapter: broken stream retains partial answer, bilingual error, no mock fallback',async({page})=>{
  await setup(page);await page.route('**/api/chat',r=>r.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({type:'snapshot',text:'已收到的部分回答'})+'\n'}));
@@ -26,7 +26,7 @@ test('real adapter: broken stream retains partial answer, bilingual error, no mo
 test('real adapter: missing key explicitly fails and mobile controls remain visible',async({page})=>{
  await setup(page);await page.route('**/api/chat',r=>r.fulfill({status:503,json:{error:'NOT_CONFIGURED'}}));
  await page.setViewportSize({width:390,height:844});await page.goto(base+'/chat');await ask(page);await expect(page.getByTestId('assistant-message')).toContainText('真实模式尚未配置');
- for(const name of ['新对话','历史','联系林夏'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ for(const name of ['新对话','历史','联系阿哲'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:'docs/previews/local-ai-mobile.png',fullPage:true});
 });
@@ -58,9 +58,9 @@ test('real adapter: stop preserves streamed text and navigation bridge saves bef
 });
 
 test('Markdown: X link, lists, code, table, safe HTML, refresh and mobile',async({page})=>{
- await setup(page);const text='可以直接联系 [林夏的联系页](https://example.com/contact)。\n\n**想聊的方向**\n\n- 产品\n- 设计\n\n`示例代码`\n\n|方向|说明|\n|---|---|\n|设计|聊聊想法|\n\n<script>window.injected=true</script>\n[危险链接](javascript:alert(1))\n[来源未核实 / unverified source]';
- await page.route('**/api/chat',r=>r.fulfill({contentType:'application/x-ndjson',body:response(text)}));await page.goto(base+'/chat');await ask(page,'怎么联系林夏？');
- const message=page.getByTestId('assistant-message');const link=message.getByRole('link',{name:'林夏的联系页',exact:true});await expect(link).toHaveAttribute('href','https://example.com/contact');await expect(link).toHaveAttribute('target','_blank');await expect(message.locator('strong')).toHaveText('想聊的方向');await expect(message.locator('li')).toHaveCount(2);await expect(message.locator('table')).toBeVisible();await expect(message.locator('code')).toHaveText('示例代码');await expect(message.locator('script')).toHaveCount(0);await expect(message.locator('a[href^="javascript:"]')).toHaveCount(0);await expect(message).not.toContainText('来源未核实');
+ await setup(page);const text='可以直接联系 [阿哲的联系页](https://example.com/contact)。\n\n**想聊的方向**\n\n- 产品\n- 设计\n\n`示例代码`\n\n|方向|说明|\n|---|---|\n|设计|聊聊想法|\n\n<script>window.injected=true</script>\n[危险链接](javascript:alert(1))\n[来源未核实 / unverified source]';
+ await page.route('**/api/chat',r=>r.fulfill({contentType:'application/x-ndjson',body:response(text)}));await page.goto(base+'/chat');await ask(page,'怎么联系阿哲？');
+ const message=page.getByTestId('assistant-message');const link=message.getByRole('link',{name:'阿哲的联系页',exact:true});await expect(link).toHaveAttribute('href','https://example.com/contact');await expect(link).toHaveAttribute('target','_blank');await expect(message.locator('strong')).toHaveText('想聊的方向');await expect(message.locator('li')).toHaveCount(2);await expect(message.locator('table')).toBeVisible();await expect(message.locator('code')).toHaveText('示例代码');await expect(message.locator('script')).toHaveCount(0);await expect(message.locator('a[href^="javascript:"]')).toHaveCount(0);await expect(message).not.toContainText('来源未核实');
  await page.context().route('https://example.com/**',r=>r.fulfill({body:'Contact destination intercepted for no-network test'}));const popup=page.waitForEvent('popup');await link.click();const tab=await popup;await tab.waitForLoadState();expect(tab.url()).toBe('https://example.com/contact');await tab.close();
  await page.reload();await expect(link).toBeVisible();await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'docs/previews/markdown-mobile.png',fullPage:true});
 });
