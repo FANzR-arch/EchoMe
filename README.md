@@ -6,6 +6,8 @@
 
 ![EchoMe：为你的网站增加一个 AI 助手](docs/media/echome-cover.jpg)
 
+https://github.com/user-attachments/assets/92dbd220-6ea7-4de6-a63c-1aeebc83cda1
+
 - 访客在网站上直接提问，回答只依据你公开写过的资料；资料之外，明确告知无法确认。
 - 提示词注入、伪造的历史消息，由服务端代码拦截。
 - 合作咨询经 Grok Bot 推送到手机，回复一句，访客端显示「本人回复」。
