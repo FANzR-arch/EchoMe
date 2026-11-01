@@ -52,15 +52,14 @@ npm run dev:admin
 
 **本机保存不等于线上发布；Git push 也不等于发布最新知识。** 当前线上 AI 使用你明确导出的资料包。
 
-最省事的方式：告诉 Codex **「把我确认的最新资料发布到线上 AI，并检查一次配置，不调用模型」**。
+最省事的方式：在后台「发布与嵌入」点发布，或者告诉你的 AI **「把我确认的最新资料发布到线上，并检查一次配置，不调用模型」**。
 
 自己操作则在项目目录运行：
 
 ```powershell
 npm run knowledge:export
 # 查看 deploy/knowledge-release.json，确认内容可供访客回答使用
-npm run build:cloud
-vercel deploy --prod --yes --scope fanzr-archs-projects
+npm run deploy:vercel
 ```
 
 导出和构建不消耗模型额度。部署完成后，新回复使用新版；旧存档仍保留回答当时的资料快照。资料包默认不提交 Git，所以暂不依赖 Git 自动部署来更新知识。
