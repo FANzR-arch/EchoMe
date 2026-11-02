@@ -90,7 +90,7 @@ export function createMcp(store: HandoffStore, { repliesPerHour = 20, knowledge 
             entries: v.entries.map(e => ({ id: e.id, title: e.title, tier: e.tier, origin: e.origin, ...(e.hidden ? { hidden: true } : {}), summary: e.text.replace(/\s+/g, ' ').slice(0, 120) })) });
         }
         if (name === 'update_knowledge') { const saved = await knowledge!.save(args?.id, input, 'agent'); return text({ saved: true, id: saved.target, note: 'Live for new questions within a minute.' }); }
-        if (name === 'draft_knowledge') { const d = await knowledge!.draft(args?.id, input, 'agent', args?.note); return text({ drafted: true, id: d.id, note: 'Waiting in the review queue on the owner page (/owner → 资料).' }); }
+        if (name === 'draft_knowledge') { const d = await knowledge!.draft(args?.id, input, 'agent', args?.note); return text({ drafted: true, id: d.id, note: 'Waiting for the owner on the owner page (/owner → 待处理).' }); }
         if (name === 'restore_knowledge') { await knowledge!.restore(args?.id); return text({ restored: true }); }
       } catch (e) { const message = ownerMessage(e); if (message) return text(message, true); throw e; }
     }

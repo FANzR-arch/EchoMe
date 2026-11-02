@@ -45,6 +45,10 @@
     {
       "source": "/owner",
       "destination": "/index.html"
+    },
+    {
+      "source": "/owner/:path*",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -66,7 +70,7 @@
       ]
     },
     {
-      "source": "/(owner|api/owner/.*)",
+      "source": "/(owner|owner/.*|api/owner/.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",

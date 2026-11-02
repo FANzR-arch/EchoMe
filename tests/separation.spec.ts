@@ -24,7 +24,10 @@ test("visitor site serves only chat and public build excludes admin screens", as
     "启用此版本",
     "保存到知识草稿",
     "保存用量限制",
-    "CONVERSATIONS",
+    // Local workbench only; the online owner page has its own conversations screen.
+    "让 AI 采访我",
+    "发布与嵌入",
+    "只在这台电脑上",
     "sample-contact",
   ])
     expect(source).not.toContain(privateLabel);

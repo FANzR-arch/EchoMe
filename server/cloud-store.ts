@@ -1,5 +1,5 @@
 /** Supabase service-role REST client; used only by server functions and localhost admin. */
-import { summarize, runsToTurns, type HandoffStore, type OwnerMessage, type SavedAnswer } from "./handoff.ts";
+import { summarize, runsToTurns, inboxOf, type HandoffStore, type OwnerMessage, type SavedAnswer } from "./handoff.ts";
 import type { EditSource, EditValue, KnowledgeEdit, KnowledgeEditStore } from "./knowledge-edits.ts";
 /** Site-wide chat limits passed to pai_start, so every function instance enforces the same numbers. */
 type ChatLimits={daily:number;perMinute:number;concurrent:number};
@@ -58,7 +58,18 @@ export class CloudHandoff implements HandoffStore {
     return this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&conversation=eq.'+encodeURIComponent(conversation)+(after?'&created=gt.'+encodeURIComponent(after):'')+'&order=created.asc&limit=100');
   }
   async repliesSince(since:string){return (await this.cloud.request('pai_owner_messages?select=id&role=eq.owner&created=gt.'+encodeURIComponent(since)+'&limit=1000')).length;}
-  private runs(filter=''){return this.cloud.request('pai_runs?select=conversation,created,input:value->input,response:value->>response'+filter);}
+  private runs(filter=''){return this.cloud.request('pai_runs?select=id,conversation,created,review,input:value->input,response:value->>response'+filter);}
+  async inbox(){
+    const since=new Date(Date.now()-14*86400_000).toISOString();
+    const [runs,notes]=await Promise.all([this.runs('&created=gt.'+encodeURIComponent(since)+'&order=created.desc&limit=300'),this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&created=gt.'+encodeURIComponent(since)+'&order=created.desc&limit=300')]);
+    return inboxOf(runs,notes);
+  }
+  async dismiss(runId:string){
+    if(!/^[0-9a-f-]{36}$/i.test(runId))return false;
+    const row=(await this.cloud.request('pai_runs?select=review&id=eq.'+runId))[0];
+    if(!row)return false;
+    await this.cloud.review(runId,row.review?.note??'',row.review?.corrected??'',true);return true;
+  }
   async recent(limit:number){
     const [runs,notes]=await Promise.all([this.runs('&order=created.desc&limit=200'),this.cloud.request('pai_owner_messages?select=id,conversation,created,role,text&order=created.desc&limit=200')]);
     return summarize(runs,notes,limit);

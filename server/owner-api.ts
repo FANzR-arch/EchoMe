@@ -78,6 +78,11 @@ export function createOwnerApi(config: OwnerConfig) {
       const store = config.handoff;
       if (!store) return json(503, { error: 'NO_STORAGE' });
       if (route === 'GET conversations') return json(200, { conversations: await store.recent(50) });
+      if (route === 'GET inbox') return json(200, store.inbox ? await store.inbox() : { questions: [], notes: [] });
+      if (route === 'POST dismiss') {
+        const body = await readJson(req);
+        return typeof body?.id === 'string' && await store.dismiss?.(body.id) ? json(200, { ok: true }) : json(404, { error: 'NOT_FOUND' });
+      }
       if (route === 'GET conversation') {
         const id = url.searchParams.get('id');
         const turns = conversationId(id) ? await store.transcript(id) : undefined;

@@ -18,10 +18,29 @@ export interface HandoffStore {
   saveAnswer(question: string, answer: string, conversation?: string): Promise<SavedAnswer>;
   savedAnswers(limit: number): Promise<SavedAnswer[]>;
   forgetAnswer(id: string): Promise<boolean>;
+  /** What needs the owner: unanswered questions and visitor notes without a reply yet. */
+  inbox?(): Promise<Inbox>;
+  /** Marks an unanswered question as handled. */
+  dismiss?(runId: string): Promise<boolean>;
 }
 
 export const conversationId = (v: unknown): v is string => typeof v === 'string' && /^[a-zA-Z0-9_-]{8,80}$/.test(v);
-type Run = { conversation: string; created: string; input?: { role: string; content: string }[]; response?: string };
+type Run = { id?: string; conversation: string; created: string; input?: { role: string; content: string }[]; response?: string; review?: { reviewed?: boolean; note?: string; corrected?: string } };
+export type InboxQuestion = { id: string; conversation: string; created: string; question: string; answer: string };
+export type Inbox = { questions: InboxQuestion[]; notes: OwnerMessage[] };
+/** The owner's own tests from the owner page or the local workbench never count as visitor work. */
+export const ownerTestPrefix = 'owner-test-';
+const unansweredPattern = /无法确认|没有这方面|资料里没有|没有相关|不确定|can['’]?t confirm|cannot confirm|don['’]?t have (that|this|any) information|not sure/i;
+/** Two weeks of runs and notes, minus anything the owner already replied to or dismissed. */
+export function inboxOf(runs: Run[], notes: OwnerMessage[], now = Date.now()): Inbox {
+  const since = new Date(now - 14 * 86400_000).toISOString(), replied = new Map<string, string>();
+  for (const n of notes) if (n.role === 'owner' && n.created > (replied.get(n.conversation) ?? '')) replied.set(n.conversation, n.created);
+  const open = (conversation: string, created: string) => created >= since && !conversation.startsWith(ownerTestPrefix) && !((replied.get(conversation) ?? '') > created);
+  const questions = runs.filter(r => r.id && r.response && unansweredPattern.test(r.response) && !r.review?.reviewed && open(r.conversation, r.created))
+    .sort((a, b) => b.created.localeCompare(a.created)).slice(0, 20)
+    .map(r => ({ id: r.id!, conversation: r.conversation, created: r.created, question: lastVisitor(r), answer: r.response! }));
+  return { questions, notes: notes.filter(n => n.role === 'visitor_note' && open(n.conversation, n.created)).sort((a, b) => b.created.localeCompare(a.created)).slice(0, 20) };
+}
 const lastVisitor = (r: Run) => [...(r.input ?? [])].reverse().find(m => m.role === 'user')?.content ?? '';
 /** Runs carry the whole history each time; each run adds its newest visitor message and the answer. */
 export function runsToTurns(runs: Run[], notes: OwnerMessage[]): Turn[] {
@@ -81,6 +100,13 @@ export class LocalHandoff implements HandoffStore {
   private runs(): Run[] { return this.store.runs() as unknown as Run[]; }
   private notes(): OwnerMessage[] { return this.store.db.prepare('SELECT * FROM owner_messages ORDER BY created').all() as OwnerMessage[]; }
   async recent(limit: number) { return summarize(this.runs(), this.notes(), limit); }
+  async inbox() { return inboxOf(this.runs(), this.notes()); }
+  async dismiss(runId: string) {
+    const run = this.runs().find(r => r.id === runId);
+    if (!run) return false;
+    this.store.review(runId, run.review?.note ?? '', run.review?.corrected ?? '', true);
+    return true;
+  }
   async transcript(conversation: string) {
     const runs = this.runs().filter(r => r.conversation === conversation), notes = this.notes().filter(n => n.conversation === conversation);
     return runs.length || notes.length ? runsToTurns(runs, notes) : undefined;
@@ -99,7 +125,7 @@ export function notifyReason(intent: string, question: string, answer: string): 
   if (/进一步|详细(聊|谈|咨询|了解)|深入(聊|谈|咨询)|(想|希望|可以|能)(约|预约|安排)|约(个|一下)?(时间|电话|会议)|打(个)?电话|语音|视频(会议|通话)|面谈|见(个)?面|一对一|付费咨询|咨询(一下|服务)|book (a )?(call|meeting)|schedule (a )?(call|meeting|chat)|follow[- ]?up|consult(ation|ing)?|hop on a call|set up a (call|meeting)/i.test(question)) return 'consultation';
   if (/合作|报价|价格|多少钱|收费|档期|外包|约稿|雇佣|招聘|hire|hiring|collaborat|quote|pricing|budget|commission|freelance/i.test(question)) return 'collaboration';
   if (intent === 'contact') return 'contact_request';
-  if (/无法确认|没有这方面|资料里没有|没有相关|不确定|can['’]?t confirm|cannot confirm|don['’]?t have (that|this|any) information|not sure/i.test(answer)) return 'unanswered';
+  if (unansweredPattern.test(answer)) return 'unanswered';
 }
 export type NotifyConfig = { url: string; key?: string; site: string; daily?: number };
 /** Per process: at most one notice per conversation and reason every 10 minutes, and a daily cap that bounds agent cost. */

@@ -3432,3 +3432,62 @@ details.wb-card > [data-slot="button"] {
     padding: var(--admin-space-4);
   }
 }
+
+/* ------------------------------------------------------------------
+   Backends (local workbench and the online owner page): light grey
+   with Morandi accents. Set by html.backend; the visitor chat never
+   gets the class and keeps its own palette.
+   ------------------------------------------------------------------ */
+html.backend {
+  --background: #eeedea;
+  --foreground: #35373a;
+  --card: #f8f7f5;
+  --primary: #5d6e74;
+  --primary-foreground: #f8f7f5;
+  --secondary: #e3e4e0;
+  --muted: #e7e5e1;
+  --muted-foreground: #6b6863;
+  --border: #d9d6d0;
+  --ring: #93a1a6;
+  --destructive: #a35f58;
+  --sidebar: #e6e5e1;
+  /* Morandi accents for states and tags. */
+  --morandi-sage: #8a9b88;
+  --morandi-mist: #8a9ba6;
+  --morandi-rose: #b48c85;
+  --morandi-sand: #b39f80;
+  --morandi-lilac: #9c94aa;
+  --admin-warning: var(--morandi-sand);
+  --admin-shadow: 0 1px 2px rgb(40 40 40 / 0.05);
+  --admin-shadow-raised: 0 1px 2px rgb(40 40 40 / 0.05), 0 8px 20px -10px rgb(40 40 40 / 0.16);
+}
+html.backend.dark {
+  --background: #262729;
+  --foreground: #e4e2de;
+  --card: #2f3032;
+  --primary: #a8b6bc;
+  --primary-foreground: #232527;
+  --secondary: #393b3c;
+  --muted: #323335;
+  --muted-foreground: #a7a39e;
+  --border: #45474a;
+  --ring: #8f9ca1;
+  --destructive: #d1948d;
+  --sidebar: #2a2b2d;
+  --morandi-sage: #a4b3a2;
+  --morandi-mist: #a5b4be;
+  --morandi-rose: #cda8a1;
+  --morandi-sand: #cdb999;
+  --morandi-lilac: #b7afc4;
+  --admin-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  --admin-shadow-raised: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 20px -10px rgb(0 0 0 / 0.5);
+}
+html.backend body { background: var(--background); }
+/* Tags read as soft Morandi chips: tinted background, darker text of the same hue. */
+html.backend .adm-pill[data-state="live"],
+html.backend .adm-pill[data-tone="sage"] { color: color-mix(in srgb, var(--morandi-sage) 70%, var(--foreground)); background: color-mix(in srgb, var(--morandi-sage) 20%, transparent); }
+html.backend .adm-pill[data-state="draft"],
+html.backend .adm-pill[data-tone="sand"] { color: color-mix(in srgb, var(--morandi-sand) 65%, var(--foreground)); background: color-mix(in srgb, var(--morandi-sand) 22%, transparent); }
+html.backend .adm-pill[data-tone="mist"] { color: color-mix(in srgb, var(--morandi-mist) 65%, var(--foreground)); background: color-mix(in srgb, var(--morandi-mist) 20%, transparent); }
+html.backend .adm-pill[data-tone="rose"] { color: color-mix(in srgb, var(--morandi-rose) 65%, var(--foreground)); background: color-mix(in srgb, var(--morandi-rose) 20%, transparent); }
+html.backend .adm-pill[data-tone="lilac"] { color: color-mix(in srgb, var(--morandi-lilac) 65%, var(--foreground)); background: color-mix(in srgb, var(--morandi-lilac) 20%, transparent); }

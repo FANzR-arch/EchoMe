@@ -1,54 +1,24 @@
-.owner-page { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; color: var(--foreground); font-size: 15px; line-height: 1.6; }
-.owner-page h1 { font-size: clamp(22px, 5vw, 28px); line-height: 1.25; margin: 0 0 12px; font-weight: 500; }
-.owner-eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 6px; }
-.owner-muted { color: var(--muted-foreground); margin: 0 0 12px; }
-.owner-error { color: var(--destructive); margin: 8px 0; }
-.owner-signin { padding-top: 72px; max-width: 420px; }
-.owner-signin form { display: grid; gap: 10px; margin-top: 24px; }
-.owner-page label { font-size: 14px; color: var(--muted-foreground); }
-.owner-page input, .owner-page textarea { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: inherit; font: inherit; font-size: 16px; }
-.owner-page textarea { resize: vertical; min-height: 88px; }
-.owner-page input:focus-visible, .owner-page textarea:focus-visible, .owner-page button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.owner-primary, .owner-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 15px; cursor: pointer; }
-.owner-primary { border: 0; background: var(--primary); color: var(--primary-foreground); }
-.owner-primary:disabled { opacity: .5; cursor: default; }
-.owner-ghost { border: 1px solid var(--border); background: transparent; color: inherit; min-height: 40px; padding: 0 12px; font-size: 14px; }
-.owner-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.owner-usage { margin: 0; font-size: 14px; }
-.owner-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; border-radius: 12px; background: var(--muted); }
-.owner-tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 14px; cursor: pointer; }
-.owner-tabs button[aria-selected="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
-.owner-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.owner-toolbar .owner-muted { margin: 0; font-size: 14px; }
-.owner-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.owner-list > li > button:not(.owner-ghost) { display: grid; gap: 4px; width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.owner-question { font-weight: 500; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.owner-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-foreground); }
-.owner-tag { padding: 1px 8px; border-radius: 999px; background: var(--secondary); color: var(--foreground); font-size: 12px; }
-.owner-answers > li { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
-.owner-answers > li > div { flex: 1; min-width: 0; }
-.owner-answers .owner-question { display: block; overflow: visible; }
-.owner-answers .owner-ghost { flex: none; }
-.owner-answers p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.owner-thread { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 10px; }
-.owner-turn { margin: 0; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); }
-.owner-turn p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.owner-turn-visitor { margin-left: 12%; background: var(--secondary); border-color: transparent; }
-.owner-turn-owner { border-color: var(--primary); }
-.owner-turn-visitor_note { border-style: dashed; border-color: var(--primary); }
-.owner-reply { display: grid; gap: 8px; position: sticky; bottom: 0; padding: 12px 0 8px; background: var(--background); }
-.owner-reply .owner-primary { justify-self: end; }
-@media (max-width: 480px) { .owner-turn-visitor { margin-left: 6%; } }
-.owner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.owner-notice { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: var(--secondary); font-size: 14px; }
-.owner-group { margin-top: 24px; }
-.owner-group h2 { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 8px; font-size: 16px; font-weight: 600; }
-.owner-group h2 small { font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
-.owner-review > .owner-list > li > button { border-color: var(--primary); border-style: dashed; }
-.owner-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; color: var(--muted-foreground); overflow-wrap: anywhere; }
-.owner-form { display: grid; gap: 8px; }
-.owner-label { font-size: 14px; color: var(--muted-foreground); }
-.owner-choice { margin: 0; }
-.owner-small { font-size: 13px; margin: 0; }
+/* Online owner page. Shell, cards, rows and pills come from the workbench (adm-*) styles; these cover what only lives here. */
+.owner-gate { min-height: 100vh; min-height: 100dvh; padding: 16px; background: var(--background); color: var(--foreground); }
+.owner-gate-top { display: flex; align-items: center; justify-content: space-between; max-width: 960px; margin: 0 auto; }
+.owner-gate-card { max-width: 420px; margin: 12vh auto 0; padding: 28px 24px; border: 1px solid var(--border); border-radius: var(--admin-radius-lg); background: var(--card); box-shadow: var(--admin-shadow-raised); }
+.owner-gate-card h1 { margin: 0 0 8px; font-size: var(--admin-text-xl); font-weight: 600; }
+.owner-gate-eyebrow { margin: 0 0 10px; font-size: var(--admin-text-xs); letter-spacing: .12em; color: var(--muted-foreground); }
+.owner-form { display: grid; gap: 8px; margin-top: 12px; }
+.owner-form label, .owner-label { font-size: var(--admin-text-sm); color: var(--muted-foreground); }
+.owner-form .adm-filter { margin: 0; }
 .owner-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.owner-toolbar strong { font-weight: 600; }
+.owner-pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.owner-note { white-space: pre-wrap; }
+.owner-editor { max-height: min(90vh, 900px); overflow-y: auto; }
+.owner-reply { display: grid; gap: 8px; margin-top: var(--admin-space-6); padding-top: var(--admin-space-4); border-top: 1px solid var(--border); }
+.owner-reply label { font-size: var(--admin-text-sm); color: var(--muted-foreground); }
+.owner-reply .owner-buttons { justify-content: flex-end; }
+.owner-reply-bubble { border: 1px solid color-mix(in srgb, var(--morandi-sage, var(--primary)) 70%, transparent); }
+.owner-note-bubble { border: 1px dashed color-mix(in srgb, var(--morandi-sand, var(--primary)) 80%, transparent); }
+.owner-prompts { display: grid; gap: var(--admin-space-4); }
+.owner-prompt { display: grid; gap: 10px; }
+.owner-try-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* The workbench's rows are links; here they open the editor, so they are buttons with the same look. */
+button.adm-row { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.adm-row .adm-row-main { flex: 1; min-width: 0; }

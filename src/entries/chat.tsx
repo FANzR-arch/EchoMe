@@ -10,7 +10,7 @@ mountApp(
     <Route path="/" element={<ChatPage />} />
     <Route path="/chat" element={<ChatPage />} />
     <Route path="/install" element={<InstallPage />} />
-    <Route path="/owner" element={<OwnerPage />} />
+    <Route path="/owner/*" element={<OwnerPage />} />
     <Route
       path="*"
       element={

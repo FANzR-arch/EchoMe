@@ -168,3 +168,22 @@ test('saved answers reach the model as owner-confirmed knowledge, right after sa
     await ask(); assert.match(system, /主人亲自回答过：接不接海外项目？/);
   });
 });
+
+test('the owner inbox lists unanswered questions and open notes until replied to or dismissed', async () => {
+  const ws = new WorkbenchStore(mkdtempSync(join(tmpdir(), 'pai-inbox-'))), h = new LocalHandoff(ws);
+  const ask = (conversation: string, question: string, response: string) => ws.startRun({ input: [{ role: 'user', content: question }], response, status: 'complete' }, conversation);
+  const missed = ask('visitor-aaaa1111', '你们怎么收费？', '资料里没有报价信息，我无法确认。');
+  ask('visitor-bbbb2222', '你好', '你好！');
+  ask('owner-test-cccc', '测试问题', '我无法确认。');
+  ask('visitor-dddd4444', '档期呢？', '这个我无法确认。');
+  await h.add('visitor-dddd4444', 'owner', '下个月有空。');
+  await h.add('visitor-eeee5555', 'visitor_note', '称呼/Name: 王\n想约个电话');
+  let inbox = await h.inbox();
+  assert.deepEqual(inbox.questions.map(q => [q.conversation, q.question]), [['visitor-aaaa1111', '你们怎么收费？']], 'answered, replied and owner tests are left out');
+  assert.deepEqual(inbox.notes.map(n => n.conversation), ['visitor-eeee5555']);
+  assert.equal(await h.dismiss(missed), true);
+  await h.add('visitor-eeee5555', 'owner', '好的，明天打给你。');
+  inbox = await h.inbox();
+  assert.deepEqual([inbox.questions.length, inbox.notes.length], [0, 0]);
+  assert.equal(await h.dismiss('missing'), false);
+});

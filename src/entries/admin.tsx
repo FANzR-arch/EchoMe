@@ -2,6 +2,8 @@
 import { lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { mountApp } from "../app-shell";
+// Backends share the light grey + Morandi palette; the visitor chat keeps its own.
+document.documentElement.classList.add("backend");
 const Layout = lazy(() => import("../pages/admin/layout"));
 const Inbox = lazy(() => import("../pages/admin/inbox"));
 const Conversations = lazy(() => import("../pages/admin/conversations"));
