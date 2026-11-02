@@ -40,7 +40,7 @@ import {
 } from "@/lib/data";
 import { usePreferences } from "@/lib/preferences";
 import { toast } from "sonner";
-import { isDemoWorkspace, trustedParentOrigin, untrustedFrame } from "@/lib/site";
+import { isDemoWorkspace, publicVisitorSite, trustedParentOrigin, untrustedFrame } from "@/lib/site";
 import { ownerName } from "@/lib/owner";
 function BlockedFrame() {
   const { t } = usePreferences();
@@ -123,7 +123,7 @@ function ChatPageContent() {
       {portfolio && host.recoveryWarning && <p className="host-recovery">{t("上次离开时未确认保存，最近内容可能不完整。", "The last save was not confirmed; recent content may be incomplete.")}</p>}
       <header className="chat-header">
         <Brand compact={embedded} />
-        {modelState.mode === "mock" ? <DemoBadge /> : <span className="demo-badge">{modelState.mode === "real" ? (modelState.configured ? t("真实 AI · 本机", "Real AI · local") : t("真实模式 · 待配置", "Real mode · setup needed")) : t("模型服务连接中 / 不可用", "Model service connecting / unavailable")}</span>}
+        {modelState.mode === "mock" ? <DemoBadge /> : publicVisitorSite ? (modelState.mode === "unavailable" || (modelState.mode === "real" && !modelState.configured)) && <span className="demo-badge">{t("暂时无法回答", "Unavailable right now")}</span> : <span className="demo-badge">{modelState.mode === "real" ? (modelState.configured ? t("真实 AI · 本机", "Real AI · local") : t("真实模式 · 待配置", "Real mode · setup needed")) : t("模型服务连接中 / 不可用", "Model service connecting / unavailable")}</span>}
         <div className="header-spacer" />
         <PreferencesControls />
         {embedded && parentOrigin ? (

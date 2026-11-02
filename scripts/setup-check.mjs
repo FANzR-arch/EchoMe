@@ -13,10 +13,13 @@ check('聊天站', install.status === 200, `GET /install → ${install.status}`,
 const configRes = await get('/api/config');
 let config = {};
 try { config = JSON.parse(configRes.body); } catch { /* reported below */ }
-check('接口', configRes.status === 200, `GET /api/config → ${configRes.status}`, configRes.status === 403 ? '访问地址和生产域名不一致：设 PAI_PUBLIC_ORIGIN 后重新部署' : configRes.status === 503 ? '服务端没启动：检查模型三个变量，以及 owner.config.json 是否合法' : '检查部署日志');
+check('接口', configRes.status === 200, `GET /api/config → ${configRes.status}`, configRes.status === 403 ? '访问地址和生产域名不一致：设 PAI_PUBLIC_ORIGIN 后重新部署' : configRes.status === 503 ? '服务端没启动：在 Vercel 的 Logs 里搜 “EchoMe could not start”，后面就是原因（模型变量、owner.config.json 或 knowledge/ 里写错的一条）' : '检查部署日志');
 check('模型', config.mode === 'real' && config.configured === true, `mode=${config.mode ?? '?'} configured=${config.configured ?? '?'}`, '检查 PAI_API_BASE_URL（https）、PAI_MODEL、PAI_API_KEY');
-check('本人回复（Supabase）', config.handoff === true, `handoff=${config.handoff ?? '?'}`, '填 PAI_SUPABASE_URL 和 PAI_SUPABASE_SECRET_KEY，运行 npm run setup:sql 的输出，再重新部署');
-if (config.handoff) { const r = await get('/api/replies?conversation=echome-setup-check'); check('本人回复的数据表', r.status === 200, `GET /api/replies → ${r.status}`, '在 Supabase SQL Editor 运行 npm run setup:sql 的输出（需要 pai_owner_messages 表）'); }
+check('本人回复（Supabase）', config.handoff === true, `handoff=${config.handoff ?? '?'}`, '填 PAI_SUPABASE_URL 和 PAI_SUPABASE_SECRET_KEY，在 Supabase SQL Editor 运行 supabase/setup.sql，再重新部署');
+if (config.handoff) { const r = await get('/api/replies?conversation=echome-setup-check'); check('本人回复的数据表', r.status === 200, `GET /api/replies → ${r.status}`, '在 Supabase SQL Editor 运行 supabase/setup.sql（需要 pai_owner_messages 表）'); }
+const ownerRes = await get('/api/owner/session');
+let ownerPage = {}; try { ownerPage = JSON.parse(ownerRes.body); } catch { /* reported below */ }
+check('主人页（/owner）', ownerPage.enabled === true, `enabled=${ownerPage.enabled ?? '?'}`, '在 Vercel 环境变量里加 PAI_OWNER_PASSWORD（至少 12 位），重新部署后打开 /owner 登录');
 check('访客提醒（webhook）', config.contact === true, `contact=${config.contact ?? '?'}`, '填 PAI_NOTIFY_WEBHOOK_URL 和 PAI_NOTIFY_WEBHOOK_KEY 后重新部署');
 
 if (flag('--send-test') && config.contact) {
@@ -30,7 +33,7 @@ if (token) {
   const list = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
   let tools = []; try { tools = JSON.parse(list.body).result.tools.map(t => t.name); } catch { /* reported below */ }
   check('MCP 工具', init.status === 200 && tools.includes('reply_to_visitor'), `initialize → ${init.status}, tools=${tools.join(',') || '无'}`, init.status === 404 ? '口令不对、少于 24 位，或需要 Supabase；改完要重新部署' : '检查部署日志');
-  if (init.status === 200) { const r = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_saved_answers', arguments: { limit: 1 } } }); let ok = false; try { ok = JSON.parse(r.body).result.isError !== true; } catch { /* reported below */ } check('已保存回答的数据表', ok, `list_saved_answers → ${ok ? 'ok' : 'error'}`, '在 Supabase SQL Editor 运行 npm run setup:sql 的输出（需要 pai_saved_answers 表）'); }
+  if (init.status === 200) { const r = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_saved_answers', arguments: { limit: 1 } } }); let ok = false; try { ok = JSON.parse(r.body).result.isError !== true; } catch { /* reported below */ } check('已保存回答的数据表', ok, `list_saved_answers → ${ok ? 'ok' : 'error'}`, '在 Supabase SQL Editor 运行 supabase/setup.sql（需要 pai_saved_answers 表）'); }
 }
 
 if (flag('--json')) console.log(JSON.stringify({ site, ok: results.every(r => r.ok), results }, null, 2));

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 test("visitor site serves only chat and public build excludes admin screens", async ({
@@ -69,8 +69,12 @@ test("independent admin embeds cross-origin visitor chat with trusted close and 
 });
 
 test('knowledge and server source are not publicly downloadable', async ({ request }) => {
-  for (const path of ['/api.txt','/api.txt?raw','/@fs/D:/00_Formula/03_Coding/PersonalAI/api.txt?raw','/.env.local','/knowledge/persona.md', '/knowledge/rules.md', '/knowledge/website/snapshot.json', '/server/knowledge.ts']) {
+  // Files that only exist on some machines (local keys) are checked when present; the rest always exist.
+  const root = process.cwd().replaceAll('\\', '/');
+  const paths = ['/knowledge/persona.md', '/knowledge/rules.md', '/knowledge/website/snapshot.json', '/server/knowledge.ts', `/@fs/${root}/server/knowledge.ts?raw`];
+  for (const file of ['api.txt', '.env.local']) if (existsSync(file)) paths.push('/' + file, '/' + file + '?raw', `/@fs/${root}/${file}?raw`);
+  for (const path of paths) {
     const response = await request.get('http://127.0.0.1:5174' + path);
-    expect(response.status()).toBe(403);
+    expect(response.status(), path).toBe(403);
   }
 });

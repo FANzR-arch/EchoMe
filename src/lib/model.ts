@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ChatModelAdapter } from "@assistant-ui/react";
 import type { Locale } from "./data";
+import { publicVisitorSite } from "./site";
+import { owner } from "./owner";
 export type ModelState = { mode: "real" | "mock" | "unavailable" | "loading"; configured?: boolean; model?: string; handoff?: boolean; contact?: boolean };
 export function useModelState() {
   const [state, setState] = useState<ModelState>({ mode: "loading" });
@@ -29,15 +31,26 @@ const errors: Record<string, [string, string]> = {
   UPSTREAM_RATE: ["服务商限流，请稍后重试。", "Provider rate limit reached. Try later."],
   RATE_LIMIT: ["请求过于频繁，请一分钟后重试。", "Too many requests. Try again in a minute."],
   CONCURRENCY_LIMIT: ["正在处理其他请求，请稍后重试。", "Other requests are running. Try later."],
-  DAILY_LIMIT: ["本机每日测试额度已达上限。", "Local daily test limit reached."],
+  DAILY_LIMIT: ["今天的对话额度已用完，可用 PAI_DAILY_LIMIT 调高。", "Today's chat limit is used up. Raise it with PAI_DAILY_LIMIT."],
+  CLOUD_UNAVAILABLE: ["云端服务没有启动或 Supabase 不可用，原因见 Vercel 函数日志。", "The cloud service did not start or Supabase is unavailable. See the Vercel function logs."],
   INPUT_LIMIT: ["输入过长或格式无效，请缩短到 2,000 字以内。", "Invalid or oversized input. Keep messages within 2,000 characters."],
   CONTEXT_LIMIT: ["对话上下文已达上限，请新建对话。", "Context limit reached. Start a new chat."],
   TIMEOUT: ["回答超时，已保留收到的内容，可重试。", "Response timed out. Received text is preserved; you can retry."],
   STREAM_INTERRUPTED: ["连接中断，已保留收到的内容，可重试。", "Connection interrupted. Received text is preserved; you can retry."],
 };
+const unavailable: [string, string] = [`助手暂时无法回答，请稍后再试，或通过${owner.contact.label.zh}留言。`, `The assistant can't answer right now. Please try again later, or reach ${owner.name.en} through the contact page.`];
+/** What visitors see on the public site: no setup hints, keys or variable names. */
+const visitorErrors: Record<string, [string, string]> = {
+  DAILY_LIMIT: [`今天的对话次数已经用完了，明天再来吧。有急事可以通过${owner.contact.label.zh}找${owner.pronoun.zh}。`, `Today's chats are used up. Please come back tomorrow, or reach ${owner.name.en} through the contact page.`],
+  RATE_LIMIT: ["现在提问的人有点多，请一分钟后再试。", "Lots of questions right now. Please try again in a minute."],
+  CONCURRENCY_LIMIT: ["正在回答其他访客，请稍等几秒再试。", "Answering someone else right now. Please try again in a few seconds."],
+  UPSTREAM_RATE: ["服务有点忙，请稍后再试。", "The service is busy. Please try again shortly."],
+  INVALID_TOOL_CALL: ["这次没能答好，请重试或换个说法。", "That didn't work this time. Please retry or rephrase."],
+  OUTPUT_LIMIT: ["这个问题有点大，请缩小范围后再问。", "That question is a bit broad. Please narrow it down."],
+};
 export function realAdapter(locale: () => Locale, conversation?: string): ChatModelAdapter {
   return { async *run({ messages, abortSignal }) {
-    const error = (code: string) => new Error((errors[code] ?? ["模型请求失败，请检查服务端配置后重试。", "Model request failed. Check server configuration and retry."])[locale() === "en" ? 1 : 0]);
+    const error = (code: string) => new Error((publicVisitorSite ? visitorErrors[code] ?? (["INPUT_LIMIT", "CONTEXT_LIMIT", "TIMEOUT", "STREAM_INTERRUPTED", "INTENT_FAILED"].includes(code) ? errors[code] : unavailable) : errors[code] ?? ["模型请求失败，请检查服务端配置后重试。", "Model request failed. Check server configuration and retry."])[locale() === "en" ? 1 : 0]);
     let text = "", buffer = "", completed = false;
     // Assistant turns carry the server signature back; unsigned ones are replaced server-side.
     const context = messages.filter(m => m.role !== "system").map(m => { const sig = m.role === "assistant" ? m.metadata?.custom?.sig : undefined; return { role: m.role, content: m.content.filter(p => p.type === "text").map(p => p.text).join(""), ...(typeof sig === "string" ? { sig } : {}) }; }).filter(m => m.content.trim());

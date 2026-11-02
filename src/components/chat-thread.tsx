@@ -2,6 +2,7 @@ import { MarkdownText } from "./markdown-text";
 /** Adapted from assistant-ui MIT minimal thread template; see THIRD_PARTY_NOTICES.md. */
 import { useEffect, useMemo, useRef } from "react";
 import { portfolio, immersive, registerPersistence, readSession, writeSession, useHost, tellHost } from "@/lib/host-bridge";
+import { publicVisitorSite } from "@/lib/site";
 import { HostGreeting } from "./host-greeting";
 import {
   AssistantRuntimeProvider,
@@ -62,7 +63,7 @@ export function ChatRuntime({
   options.current = { locale, scenario, draft };
   const adapter = useMemo(
     () =>
-      !draft && modelState.mode === "real" ? realAdapter(() => options.current.locale, conversation?.id) : !draft && modelState.mode !== "mock" ? { async *run() { throw new Error("本机模型服务不可用。Local model service unavailable."); } } : mockAdapter({
+      !draft && modelState.mode === "real" ? realAdapter(() => options.current.locale, conversation?.id) : !draft && modelState.mode !== "mock" ? { async *run() { throw new Error(publicVisitorSite ? (options.current.locale === "en" ? "The assistant can't answer right now. Please try again later." : "助手暂时无法回答，请稍后再试。") : "本机模型服务不可用。Local model service unavailable."); } } : mockAdapter({
         conversation: conversation?.id,
         locale: () => options.current.locale,
         scenario: () => options.current.scenario,

@@ -63,7 +63,7 @@
 
 - 打开 https://supabase.com ，新建一个免费项目。地区选离用户近的，例如 Tokyo、Singapore。
 - **【请用户】** 登录或注册 Supabase。
-- 在项目的 SQL Editor 里，把 `npm run setup:sql` 的输出整段粘进去运行。这段 SQL 可以重复运行。
+- 在项目的 SQL Editor 里，把仓库里 `supabase/setup.sql` 的全文粘进去运行（和 `npm run setup:sql` 的输出相同）。这段 SQL 可以重复运行；如果弹窗提示有删除操作，确认即可，只是替换旧版函数。
 - 在 SQL Editor 里再运行 `supabase/schedule-cleanup.sql`（需要先在 Database → Extensions 启用 `pg_cron`），用于定时清理旧对话。
 - 在 Project Settings → API 记下 Project URL，以及 `service_role` 密钥（不是 anon）。
 - 验证：在 Table Editor 里能看到 `pai_conversations`、`pai_runs` 和 `pai_owner_messages` 三张表。
@@ -83,9 +83,10 @@
 | `PAI_SUPABASE_SECRET_KEY` | 用户填：第 4 步的 service_role 密钥 |
 | `PAI_HISTORY_SECRET` | 你生成：`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
 | `PAI_MCP_TOKEN` | 你生成：同上，另生成一个，并记在你的安全存储里，第 7 步要用 |
+| `PAI_OWNER_PASSWORD` | 用户填：至少 12 位、用户自己记得住的密码。用于打开 `/owner` 主人页，在手机或电脑上看对话、回复访客 |
 
 - 点 Deploy。
-- 验证：打开 `https://<项目>.vercel.app/install`，看到嵌入代码。然后运行 `npm run setup:check -- --site https://<项目>.vercel.app`，“聊天站”和“模型”两项通过。
+- 验证：打开 `https://<项目>.vercel.app/install`，看到嵌入代码；打开 `https://<项目>.vercel.app/owner`，能用 `PAI_OWNER_PASSWORD` 登录。然后运行 `npm run setup:check -- --site https://<项目>.vercel.app`，“聊天站”和“模型”两项通过。
 
 ## 第 6 步：给你自己建“访客提醒”任务（webhook）
 
@@ -137,6 +138,7 @@
 
 用三四句话说清楚：
 - 聊天站地址和嵌入代码放在了哪里；
+- 他的对话后台：手机或电脑打开 `https://<项目>.vercel.app/owner`，输入他自己设的 `PAI_OWNER_PASSWORD` 就能看访客对话、直接回复。建议他收藏或添加到手机主屏幕。忘了密码就在 Vercel 改 `PAI_OWNER_PASSWORD` 后 Redeploy；
 - 什么情况下会提醒他，怎么回复访客；
 - 以后想改资料，直接对你说“把 xx 加进 EchoMe 的资料”，你去改 `knowledge/` 并提交，Vercel 会自动重新部署；
 - 每天最多提醒 30 次（可以用 `PAI_NOTIFY_DAILY` 调整），模型按他自己的 API 用量计费。
@@ -150,4 +152,7 @@
 | 模型报错，说不支持工具 | 加 `PAI_TOOLS=off` 后重新部署 |
 | “本人回复”不可用（handoff=false） | Supabase 两个变量没填对，或第 4 步的 SQL 没运行 |
 | 收不到提醒 | 检查 webhook 两个变量，并重新部署；同一段对话 10 分钟内只提醒一次 |
+| Vercel 构建失败，日志有 “EchoMe build check failed” | 按下一行的提示改 `owner.config.json` 或 `knowledge/` 里写错的那一条，再提交 |
+| 部署成功但 `/api/config` 返回 503 | 在 Vercel 的 Logs 里搜 `EchoMe could not start`，按后面的原因改环境变量或资料 |
+| 访客常看到“对话次数已经用完” | 设 `PAI_DAILY_LIMIT`（默认 100）后重新部署；接了 Supabase 先重新运行 `supabase/setup.sql` |
 | MCP 返回 404 | 口令不对，或 `PAI_MCP_TOKEN` 少于 24 位，或改完没有重新部署 |

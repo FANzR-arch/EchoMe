@@ -147,3 +147,10 @@ test('optional knowledge planning never buffers the final answer until completio
  assert.equal(JSON.parse(String(init?.body)).tools,undefined);return new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(frame('逐步出现')));finishAnswer=()=>{c.enqueue(new TextEncoder().encode(frame('，完成','stop')+'data: [DONE]\n\n'));c.close();};}}));
  }) as typeof fetch,limits,{...config,intentRouting:true,toolsVerified:true});
 });
+test('owner-tunable limits come from the environment and reject nonsense', async () => {
+  const { limitsFromEnv } = await import('./api.ts');
+  assert.deepEqual([limitsFromEnv({}).daily, limitsFromEnv({}).perMinute, limitsFromEnv({}).concurrent], [limits.daily, limits.perMinute, limits.concurrent]);
+  const p = limitsFromEnv({ PAI_DAILY_LIMIT: '500', PAI_PER_MINUTE_LIMIT: ' 40 ', PAI_CONCURRENT_LIMIT: '8' });
+  assert.deepEqual([p.daily, p.perMinute, p.concurrent, p.input], [500, 40, 8, limits.input]);
+  for (const bad of ['0', '-1', '1.5', 'many', '100001']) assert.throws(() => limitsFromEnv({ PAI_DAILY_LIMIT: bad }), /PAI_DAILY_LIMIT/);
+});

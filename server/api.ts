@@ -16,11 +16,27 @@ import { responseStyle } from "./response-style.ts";
 import { notifyReason, conversationId, type HandoffStore, type Reason, type SavedAnswer } from "./handoff.ts";
 import { createMcp, tokenMatches } from "./mcp.ts";
 import { owner } from "./owner.ts";
-export const limits = { input: 2000, context: 36000, messages: 24, output: 600, perMinute: 6, concurrent: 2, daily: 30, timeoutMs: 45000, idleMs: 12000 };
-export type AuditStore = { startRun(value:Record<string,unknown>,conversation:string):string|Promise<string>; finishRun(id:string,value:unknown):void|Promise<void> };
+import { createOwnerApi } from "./owner-api.ts";
+export const limits = { input: 2000, context: 36000, messages: 24, output: 600, perMinute: 20, concurrent: 4, daily: 100, timeoutMs: 45000, idleMs: 12000 };
+/** Site-wide visitor message limits the owner may tune; Supabase enforces the same numbers across instances. */
+export const limitRanges = { PAI_DAILY_LIMIT: ["daily", 100000], PAI_PER_MINUTE_LIMIT: ["perMinute", 600], PAI_CONCURRENT_LIMIT: ["concurrent", 50] } as const;
+export function limitsFromEnv(env: Record<string, string | undefined> = process.env) {
+  const policy = { ...limits };
+  for (const [name, [field, max]] of Object.entries(limitRanges)) {
+    const raw = env[name]?.trim();
+    if (!raw) continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > max) throw Error(`${name}: must be a whole number from 1 to ${max}`);
+    policy[field] = n;
+  }
+  return policy;
+}
+export type AuditStore = { startRun(value:Record<string,unknown>,conversation:string):string|Promise<string>; finishRun(id:string,value:unknown):void|Promise<void>; usageToday?():Promise<number> };
 export type Config = { mode: string; baseUrl: string; model: string; key: string; historySecret?: string; audit?: boolean; toolsVerified?: boolean; intentRouting?:boolean; publicOrigin?:string; auditStore?:AuditStore;
   /** Owner hand-off: replies from the owner's agent, notices to it, and the MCP endpoint it calls. */
-  handoff?:HandoffStore; notify?:(notice:{reason:Reason;conversation:string;visitor:string;assistant?:string;contact?:string})=>Promise<boolean>; mcpToken?:string };
+  handoff?:HandoffStore; notify?:(notice:{reason:Reason;conversation:string;visitor:string;assistant?:string;contact?:string})=>Promise<boolean>; mcpToken?:string;
+  /** Opens the owner page at /owner; at least 12 characters. */
+  ownerPassword?:string };
 /** Prefix the visitor sees on the owner's own words; it is also what the model reads back as history. */
 export const ownerLabel=(locale:string)=>locale==='en'?`[${owner().name.en}, in person] `:`【${owner().name.zh}本人回复】`;
 /** A saved owner answer as a detail document: listed in the catalog, read in full on demand. */
@@ -51,6 +67,9 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
   let active = 0, attempts: number[] = [], day = "", daily = 0;
   const signer = historySigner(historySecret(config.historySecret, config.key));
   const mcp = config.handoff && config.mcpToken ? createMcp(config.handoff) : undefined;
+  // Supabase counts across instances; without it this process's own count is the best there is.
+  const ownerApi = createOwnerApi({ password: config.ownerPassword, secret: historySecret(config.historySecret, config.key), handoff: config.handoff, secure: !!config.publicOrigin?.startsWith("https:"), limits: policy,
+    usageToday: async () => config.auditStore?.usageToday ? config.auditStore.usageToday() : day === new Date().toISOString().slice(0, 10) ? daily : 0 });
   let handoffs: number[] = [];
   // Saved answers change rarely; a short cache spares a database call per question. Failures fall back to the last list.
   let saved: { at: number; docs: Document[] } | undefined;
@@ -72,6 +91,7 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
     if (!allowedHost || (req.headers.origin && req.headers.origin !== expected) || req.headers["sec-fetch-site"] === "cross-site") return json(403, { error: "ORIGIN_DENIED" });
     if (req.url === "/api/config" && req.method === "GET") return json(200, { mode: config.mode === "real" ? "real" : "mock", configured, model: config.mode === "real" ? config.model : undefined, detailReading: config.toolsVerified ?? capability(config).available, handoff: !!config.handoff, contact: !!config.notify });
     const url = new URL(req.url, "http://local.invalid");
+    if (url.pathname.startsWith("/api/owner/")) return ownerApi(req, res, url);
     if (url.pathname === "/api/mcp") {
       // Called by the owner's agent, never by a browser. Bearer header preferred; ?key= for agents that cannot set headers.
       const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? url.searchParams.get("key") ?? undefined;

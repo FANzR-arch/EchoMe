@@ -31,11 +31,19 @@
       "destination": "/api?route=replies"
     },
     {
+      "source": "/api/owner/:action",
+      "destination": "/api?route=owner/:action"
+    },
+    {
       "source": "/chat",
       "destination": "/index.html"
     },
     {
       "source": "/install",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/owner",
       "destination": "/index.html"
     }
   ],
@@ -54,6 +62,27 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/(owner|api/owner/.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
         }
       ]
     }

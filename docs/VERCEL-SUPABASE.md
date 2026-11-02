@@ -12,12 +12,12 @@
 
 ## 首次连接
 
-1. Supabase 创建独立免费项目；先检查已有表，然后应用 `supabase/migrations/202609190001_personalai.sql`。
+1. Supabase 创建独立免费项目；在 SQL Editor 里粘贴运行 [`supabase/setup.sql`](../supabase/setup.sql)（全部迁移合在一起，可重复运行，只新建 `pai_` 开头的表和函数）。
 2. 启用 Supabase Cron，运行 `supabase/schedule-cleanup.sql`。每小时清理一次；不是严格到秒删除。免费项目暂停期间任务不运行，恢复后下一次运行再清理。
 3. 在本机 `.env.local` 填写 `PAI_SUPABASE_URL` 和 `PAI_SUPABASE_SECRET_KEY`（该项目服务端 service_role 密钥）。不要发到聊天，不使用 VITE_ 前缀，不提交 Git。重启管理站。
 4. 运行 `npm run knowledge:export`，审核 `deploy/knowledge-release.json`，其中只含已启用资料、人设、规则和 owner 公开身份。访谈草稿、访客聊天、API 密钥不会导出。该文件默认忽略 Git。
 5. `npm run deploy:vercel`（会先按 owner 配置生成 `vercel.local.json` 里的 frame-ancestors，再用 Vercel CLI 上传）。构建命令 `npm run build:cloud` 在 Vercel 上执行。Vercel 使用 Node 24，构建命令和输出目录见 `vercel.json`。通过本机 CLI 上传经过审核的资料包；若用 Git 自动部署，需要另行安排审核后的资料包进入构建环境，不能假设本机忽略文件会随 Git 上传。
-6. 在 Vercel 服务端环境变量填写 `PAI_PUBLIC_ORIGIN`（聊天站 HTTPS 域名，无末尾斜杠）、`PAI_API_BASE_URL`、`PAI_MODEL`、`PAI_API_KEY`、`PAI_SUPABASE_URL`、`PAI_SUPABASE_SECRET_KEY`、`PAI_HISTORY_SECRET`（一串长随机字符，用于给回复签名；不填则由 API 密钥派生）。VITE_EMBED_ALLOWED_ORIGINS 仅放允许嵌入的公开网站域名。
+6. 在 Vercel 服务端环境变量填写 `PAI_PUBLIC_ORIGIN`（聊天站 HTTPS 域名，无末尾斜杠）、`PAI_API_BASE_URL`、`PAI_MODEL`、`PAI_API_KEY`、`PAI_SUPABASE_URL`、`PAI_SUPABASE_SECRET_KEY`、`PAI_HISTORY_SECRET`（一串长随机字符，用于给回复签名；不填则由 API 密钥派生）、`PAI_OWNER_PASSWORD`（网页后台 `/owner` 的密码，至少 12 位）。VITE_EMBED_ALLOWED_ORIGINS 仅放允许嵌入的公开网站域名。
 7. 函数和数据库选择相同地区。拿到实际聊天 URL 后才修改个人网站嵌入地址，先验证流式、停止、审核、刷新与手机显示。
 
 发布包记录本机已经验证的模型工具兼容性；模型或服务商变化必须重新检查、导出。云端不会自动发起付费兼容性探测。
@@ -28,7 +28,7 @@
 
 默认从会话最后一次交流计时，超过 **7 天未活动**后整段删除，包括所有重试、请求与批注。可选 7/30/90 天或关闭自动删除。设置缩短期限会使已过期会话在下一次任务中删除，无法撤销。删除不影响知识、人设、本机记录或访客浏览器历史；备份中的保留由平台规则决定。
 
-数据库每日计数独立于会话，删除会话不能重置额度。默认全站每日最多 30 次有效请求、每分钟 6 次、并发 2 次；数据库原子预留跨实例生效，不是每位访客各 30 次。模型一条回复可能发起多次上游调用。云数据库不可用时拒绝启动模型调用。
+数据库每日计数独立于会话，删除会话不能重置额度。默认全站每日最多 100 次有效请求、每分钟 20 次、并发 4 次，可用环境变量 `PAI_DAILY_LIMIT`、`PAI_PER_MINUTE_LIMIT`、`PAI_CONCURRENT_LIMIT` 调整；服务端把这些数字传给数据库，原子预留跨实例生效，不是每位访客各 100 次。从旧版本升级时在 SQL Editor 里重新运行一次 `supabase/setup.sql`，否则数据库仍按旧的 30/6/2 计数（函数日志会提示）。模型一条回复可能发起多次上游调用。云数据库不可用时拒绝启动模型调用。
 
 ## 当前验证边界
 

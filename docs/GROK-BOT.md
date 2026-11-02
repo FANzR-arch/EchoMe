@@ -36,9 +36,8 @@ EchoMe 这边用的是通用接口：一个 webhook 推送，一个 MCP 服务�
 
 然后按顺序完成下面的配置：
 
-1. 在我的 Supabase 项目的 SQL Editor 里，依次运行这两个文件的全部内容（重复运行没关系）：
-   https://raw.githubusercontent.com/FANzR-arch/EchoMe/main/supabase/migrations/202611010001_owner_handoff.sql
-   https://raw.githubusercontent.com/FANzR-arch/EchoMe/main/supabase/migrations/202611020001_saved_answers.sql
+1. 在我的 Supabase 项目的 SQL Editor 里，运行这个文件的全部内容（重复运行没关系）：
+   https://raw.githubusercontent.com/FANzR-arch/EchoMe/main/supabase/setup.sql
 2. 给你自己建一个 routine，叫“EchoMe 访客提醒”，加 webhook 触发，任务说明写：“按长期说明处理收到的 EchoMe 访客事件。”
 3. 再建一个 routine，叫“访客早报”，每个工作日早上 9 点运行：调用 list_visitor_conversations，用五句话以内告诉我昨天有哪些访客、问了什么、哪些还没回。没有访客就说“昨天没有新访客”。
 4. 生成一个至少 32 位的随机口令作为 MCP 口令，存进你的安全存储，不要在聊天里显示。
@@ -78,7 +77,7 @@ Vercel 请求授权时，只选你的 EchoMe 那一个项目，不要勾“Acces
 ## 准备
 
 - 已经部署好的 EchoMe（见 README 的三步）。
-- **Supabase**：存你的回复，必须接。按 [部署说明](VERCEL-SUPABASE.md) 建好后，再在 SQL Editor 里运行 `supabase/migrations/202611010001_owner_handoff.sql`。
+- **Supabase**：存你的回复，必须接。按 README 第四步建好（在 SQL Editor 里运行 `supabase/setup.sql`）。接好后也能用网页后台 `/owner` 看对话、回复访客。
 - Grok Bot（X Premium 及以上订阅自带）。
 
 ## 第一步：在 Grok Bot 里建一个“访客接待”

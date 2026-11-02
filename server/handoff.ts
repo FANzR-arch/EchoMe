@@ -46,6 +46,15 @@ export function summarize(runs: Run[], notes: OwnerMessage[], limit: number): Co
   }).sort((a, b) => b.lastActive.localeCompare(a.lastActive)).slice(0, limit);
 }
 
+/** The owner's own words to a visitor, from their agent or the owner page: same checks and hourly cap for both. */
+export async function sendOwnerReply(store: HandoffStore, conversation: unknown, text: unknown, perHour = 20): Promise<{ message: OwnerMessage } | { error: string }> {
+  const body = typeof text === 'string' ? text.trim() : '';
+  if (!conversationId(conversation) || !body || body.length > 2000) return { error: 'Need a known conversation id and 1–2000 characters of text.' };
+  if (!(await store.transcript(conversation))) return { error: 'Unknown conversation id.' };
+  if (await store.repliesSince(new Date(Date.now() - 3600_000).toISOString()) >= perHour) return { error: 'Reply limit reached for this hour.' };
+  return { message: await store.add(conversation, 'owner', body) };
+}
+
 /** Local SQLite twin of the cloud tables, used by the dev servers. */
 export class LocalHandoff implements HandoffStore {
   private store: WorkbenchStore;

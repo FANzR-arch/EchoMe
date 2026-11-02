@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
   const api = createApi({ mode: env.PAI_MODE || "mock", baseUrl: env.PAI_API_BASE_URL || "", model: env.PAI_MODEL || "", key: env.PAI_API_KEY || "", historySecret: env.PAI_HISTORY_SECRET || undefined, audit: true,intentRouting:true,
     // Local twin of the cloud hand-off, so the contact form, owner replies and MCP can be tried before deploying.
     handoff: new LocalHandoff(getStore()), ...(env.PAI_NOTIFY_WEBHOOK_URL ? { notify: createNotifier(notifyConfig(env, "http://127.0.0.1:5174")) } : {}),
-    mcpToken: (env.PAI_MCP_TOKEN?.length ?? 0) >= 24 ? env.PAI_MCP_TOKEN : undefined });
+    mcpToken: (env.PAI_MCP_TOKEN?.length ?? 0) >= 24 ? env.PAI_MCP_TOKEN : undefined, ownerPassword: env.PAI_OWNER_PASSWORD || undefined });
   return {
     plugins: [
       { name: "personal-ai-local-api", configureServer(server) { if(target === "admin") { const workbench=createWorkbench(undefined,undefined,{baseUrl:env.PAI_API_BASE_URL||'',model:env.PAI_MODEL||'',key:env.PAI_API_KEY||''}); server.httpServer?.once('close',()=>workbench.dispose()); server.middlewares.use((req,res,next)=>{res.setHeader("Content-Security-Policy", "frame-ancestors 'none'"); void workbench(req,res,next);}); } server.middlewares.use((req, res, next) => { void api(req, res, next); }); } },

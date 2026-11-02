@@ -21,7 +21,7 @@
     "knowledge:check": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/check-knowledge.ts",
     "test:knowledge": "node --experimental-strip-types --import ./server/test-setup.ts --test server/knowledge.test.ts scripts/sync-knowledge.test.mjs",
     "knowledge:export": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/export-cloud-knowledge.ts",
-    "build:cloud": "node scripts/check-cloud-release.mjs && npm run check && npm run build:chat",
+    "build:cloud": "node --experimental-strip-types scripts/check-cloud-release.mjs && npm run check && npm run build:chat",
     "deploy:vercel": "node --env-file-if-exists=.env.local scripts/prepare-vercel.mjs && vercel deploy --prod --local-config vercel.local.json",
     "setup:sql": "node scripts/print-setup-sql.mjs",
     "setup:check": "node scripts/setup-check.mjs"

@@ -31,3 +31,18 @@ test('cloud review updates notes only; whole conversation deletion uses cascade 
  await db.deleteConversation('test-123');assert.match(requests[1].url,/pai_conversations\?id=eq.test-123$/);assert.equal(requests[1].method,'DELETE');
  await assert.rejects(db.deleteConversation('other&or=(id.gt.0)'));
 });
+test('chat limits reach the database; an old database without them keeps working',async()=>{
+ const bodies:any[]=[];let migrated=true;
+ const db=new CloudStore('https://test.supabase.co','key',async(_url,options)=>{
+   const body=JSON.parse(String(options?.body));bodies.push(body);
+   if(!migrated&&'p_daily' in body)return Response.json({code:'PGRST202',message:'Could not find the function'},{status:404});
+   return Response.json('run-id');
+ },{daily:500,perMinute:30,concurrent:5});
+ assert.equal(await db.startRun({},'conversation'),'run-id');
+ assert.deepEqual([bodies[0].p_daily,bodies[0].p_per_minute,bodies[0].p_concurrent],[500,30,5]);
+ migrated=false;
+ const old=new CloudStore('https://test.supabase.co','key',async(_url,options)=>{const body=JSON.parse(String(options?.body));bodies.push(body);return 'p_daily' in body?Response.json({code:'PGRST202'},{status:404}):Response.json('legacy-id');},{daily:500,perMinute:30,concurrent:5});
+ assert.equal(await old.startRun({},'conversation'),'legacy-id');
+ assert.equal(await old.startRun({},'conversation'),'legacy-id');
+ assert.equal(bodies.filter(b=>'p_daily' in b).length,2); // first store once, old store only on its first call
+});

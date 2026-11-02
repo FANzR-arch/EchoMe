@@ -5,6 +5,9 @@ export const siteTarget = import.meta.env.VITE_SITE_TARGET as
   | "admin"
   | "demo";
 export const isDemoWorkspace = siteTarget === "demo";
+/** The visitor site on a real domain: visitors get plain wording, never setup hints meant for the owner. */
+export const publicVisitorSite =
+  siteTarget === "chat" && !["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
 export const chatSiteUrl =
   import.meta.env.VITE_CHAT_SITE_URL ||
   (siteTarget === "demo" ? location.origin : "http://127.0.0.1:5174");

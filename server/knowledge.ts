@@ -12,11 +12,27 @@ function read(path: string, max: number) {
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > max) throw Error('Invalid or oversized knowledge file');
   return readFileSync(path, 'utf8').replace(/^\uFEFF/, '');
 }
+/** Absolute https URL; a bare origin may omit its trailing slash, as people usually write it. */
 function validUrl(value: unknown): value is string {
-  try { const u = new URL(String(value)); return typeof value === 'string' && u.protocol === 'https:' && !u.username && !u.password && u.href === value; } catch { return false; }
+  try { const u = new URL(String(value)); return typeof value === 'string' && u.protocol === 'https:' && !u.username && !u.password && (u.href === value || u.href === value + '/'); } catch { return false; }
+}
+/** Names the entry and the field, so a hand edit on GitHub can be fixed from the build log. */
+export function documentProblem(d: Document): string | undefined {
+  if (!d || typeof d !== 'object') return 'not an object';
+  if (typeof d.id !== 'string' || !d.id) return 'missing "id"';
+  if (typeof d.title !== 'string' || !d.title || d.title.length > 400) return '"title" must be 1–400 characters';
+  if (!['website','personal','research'].includes(d.kind)) return '"kind" must be website, personal or research';
+  if (!Array.isArray(d.urls) || d.urls.length > 32) return '"urls" must be a list of at most 32 links';
+  const bad = d.urls.find(u => !validUrl(u));
+  if (bad !== undefined) return `"urls" has an invalid link ${JSON.stringify(bad)}: use a full https:// address`;
+  if (d.kind !== 'personal' && !d.urls.length) return '"urls" needs at least one https:// page for this kind';
+  if (typeof d.text !== 'string' || !d.text.trim() || d.text.length > 100000) return '"text" must be 1–100,000 characters';
+  if (typeof d.updated !== 'string') return '"updated" must be a string (it can be "")';
+  if (typeof d.file !== 'string') return '"file" must be a string (it can be "")';
 }
 export function validateDocument(d: Document) {
-  if (!d || typeof d.id !== 'string' || !d.id || typeof d.title !== 'string' || !d.title || d.title.length > 400 || !['website','personal','research'].includes(d.kind) || !Array.isArray(d.urls) || d.urls.length > 32 || !d.urls.every(validUrl) || (d.kind !== 'personal' && !d.urls.length) || typeof d.text !== 'string' || !d.text.trim() || d.text.length > 100000 || typeof d.updated !== 'string' || typeof d.file !== 'string') throw Error('Invalid knowledge document');
+  const problem = documentProblem(d);
+  if (problem) throw Error(`Invalid knowledge document ${JSON.stringify(d?.id ?? '?')}: ${problem}`);
   return d;
 }
 export function loadDocuments(directory = knowledgeRoot(), overrides = true, useRelease = true): Document[] {
@@ -25,7 +41,12 @@ export function loadDocuments(directory = knowledgeRoot(), overrides = true, use
   if(release)return release.documents.map(validateDocument).filter(d=>d.enabled!==false);
   const snapshot = JSON.parse(read(join(directory, 'website/snapshot.json'), 8_000_000));
   if (snapshot.schema !== 1 || !Array.isArray(snapshot.documents) || snapshot.documents.length > 2000) throw Error('Invalid website snapshot');
-  const docs: Document[] = snapshot.documents.map((d: Document) => { if(d.kind !== 'website') throw Error('Invalid website source kind'); return validateDocument(d); });
+  // Hand-written entries may leave out the bookkeeping fields the sync script fills in.
+  const docs: Document[] = snapshot.documents.map((d: Document) => {
+    const entry = d && typeof d === 'object' ? { ...d, kind: d.kind ?? 'website', updated: d.updated ?? '', file: d.file ?? 'website/snapshot.json' } : d;
+    if (entry?.kind !== 'website') throw Error(`Invalid knowledge document ${JSON.stringify(d?.id ?? '?')}: "kind" in website/snapshot.json must be "website"`);
+    return validateDocument(entry);
+  });
   for (const name of readdirSync(join(directory, 'approved')).sort()) {
     if (!name.endsWith('.md')) continue;
     const value = read(join(directory, 'approved', name), 500_000);
@@ -37,7 +58,8 @@ export function loadDocuments(directory = knowledgeRoot(), overrides = true, use
     docs.push(validateDocument({id:'approved:'+name,title:meta.title,kind:meta.kind,urls:meta.sources,text:match[2].trim(),updated:meta.updated,file:'approved/'+name}));
   }
   if(directory===root&&overrides){const merged=applyAssets(docs,getStore().assets());docs.splice(0,docs.length,...merged);}
-  if (new Set(docs.map(d => d.id)).size !== docs.length) throw Error('Duplicate knowledge IDs');
+  const duplicate = docs.find((d, i) => docs.findIndex(o => o.id === d.id) !== i);
+  if (duplicate) throw Error(`Duplicate knowledge IDs: two entries use "id": ${JSON.stringify(duplicate.id)}`);
   if (JSON.stringify(docs).length > 2_000_000) throw Error('Knowledge library is too large');
   return docs;
 }

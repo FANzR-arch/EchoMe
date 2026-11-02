@@ -1,23 +1,37 @@
 /** Supabase service-role REST client; used only by server functions and localhost admin. */
 import { summarize, runsToTurns, type HandoffStore, type OwnerMessage, type SavedAnswer } from "./handoff.ts";
+/** Site-wide chat limits passed to pai_start, so every function instance enforces the same numbers. */
+type ChatLimits={daily:number;perMinute:number;concurrent:number};
 export function cloudConfigured(){return !!process.env.PAI_SUPABASE_URL&&!!process.env.PAI_SUPABASE_SECRET_KEY;}
 export class CloudStore {
-  private base:string;private key:string;private fetcher:typeof fetch;
-  constructor(base=process.env.PAI_SUPABASE_URL||'',key=process.env.PAI_SUPABASE_SECRET_KEY||'',fetcher:typeof fetch=fetch){
-    this.base=base;this.key=key;this.fetcher=fetcher;
+  private base:string;private key:string;private fetcher:typeof fetch;private policy?:ChatLimits;private legacyStart=false;
+  constructor(base=process.env.PAI_SUPABASE_URL||'',key=process.env.PAI_SUPABASE_SECRET_KEY||'',fetcher:typeof fetch=fetch,policy?:ChatLimits){
+    this.base=base;this.key=key;this.fetcher=fetcher;this.policy=policy;
     const u=new URL(base);
     if(u.protocol!=='https:'||!u.hostname.endsWith('.supabase.co')||u.pathname!=='/'||u.search||u.hash||u.username||u.password||!key)throw Error('CLOUD_NOT_CONFIGURED');
   }
   async request(path:string,method='GET',body?:unknown):Promise<any>{
     const response=await this.fetcher(this.base.replace(/\/$/,'')+'/rest/v1/'+path,{method,redirect:'error',signal:AbortSignal.timeout(8000),headers:{apikey:this.key,Authorization:'Bearer '+this.key,'Content-Type':'application/json',Prefer:'return=representation'},body:body===undefined?undefined:JSON.stringify(body)});
     if(!response.ok){
-      let message='';try{message=(await response.json()).message;}catch{}
+      let message='',code='';try{({message,code}=await response.json());}catch{}
       if(['DAILY_LIMIT','RATE_LIMIT','CONCURRENCY_LIMIT','INPUT_LIMIT'].includes(message))throw Error(message);
+      if(code==='PGRST202')throw Error('FUNCTION_MISSING');
       throw Error('CLOUD_UNAVAILABLE'); // Never expose provider response, keys or SQL.
     }
     const text=await response.text();return text?JSON.parse(text):null;
   }
-  startRun(value:Record<string,unknown>,conversation:string):Promise<string>{return this.request('rpc/pai_start','POST',{p_conversation:conversation,p_value:value});}
+  async startRun(value:Record<string,unknown>,conversation:string):Promise<string>{
+    const run={p_conversation:conversation,p_value:value};
+    if(!this.policy||this.legacyStart)return this.request('rpc/pai_start','POST',run);
+    try{return await this.request('rpc/pai_start','POST',{...run,p_daily:this.policy.daily,p_per_minute:this.policy.perMinute,p_concurrent:this.policy.concurrent});}
+    catch(e){
+      if(!(e instanceof Error&&e.message==='FUNCTION_MISSING'))throw e;
+      // Database from before configurable limits: keep chatting under its built-in limits until the SQL is re-run.
+      console.warn('EchoMe: Supabase still has the old pai_start. Run supabase/setup.sql again in the Supabase SQL Editor to apply PAI_*_LIMIT.');
+      this.legacyStart=true;return this.request('rpc/pai_start','POST',run);
+    }
+  }
+  async usageToday(){const day=new Date().toISOString().slice(0,10);return Number((await this.request('pai_usage?select=requests&day=eq.'+day))[0]?.requests??0);}
   async finishRun(id:string,value:unknown){await this.request('rpc/pai_finish','POST',{p_id:id,p_value:value});}
   async runs(offset=0){
     const rows=await this.request('pai_runs?select=id,conversation,created,value,review&order=created.desc,id.desc&limit=100&offset='+offset);

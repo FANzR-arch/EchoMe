@@ -38,3 +38,19 @@ test('public origin: explicit value, then Vercel production domain, never http',
   assert.equal(publicOrigin({ VERCEL_PROJECT_PRODUCTION_URL: 'my-ai.vercel.app' }), 'https://my-ai.vercel.app');
   for (const env of [{}, { PAI_PUBLIC_ORIGIN: 'http://chat.example.com' }, { PAI_PUBLIC_ORIGIN: 'https://chat.example.com/path' }]) assert.throws(() => publicOrigin(env));
 });
+test('startup names the missing setting instead of failing silently', async () => {
+  const saved = { ...process.env };
+  resetReleaseCache();
+  try {
+    const { startup } = await import('../api/index.ts');
+    const base = { PAI_RELEASE_PATH: join(dir, 'missing.json'), PAI_PUBLIC_ORIGIN: 'https://chat.example.com', PAI_API_BASE_URL: 'https://p.invalid', PAI_MODEL: 'm' };
+    process.env = { ...saved, ...base };
+    await assert.rejects(startup(), /PAI_API_KEY: not set/);
+    process.env = { ...saved, ...base, PAI_API_KEY: 'k', PAI_DAILY_LIMIT: 'lots' };
+    await assert.rejects(startup(), /PAI_DAILY_LIMIT: must be a whole number/);
+    process.env = { ...saved, ...base, PAI_API_KEY: 'k', PAI_SUPABASE_URL: 'https://example.com', PAI_SUPABASE_SECRET_KEY: 's' };
+    await assert.rejects(startup(), /PAI_SUPABASE_URL: use the project URL/);
+    process.env = { ...saved, ...base, PAI_API_KEY: 'k' };
+    assert.equal(typeof await startup(), 'function');
+  } finally { process.env = saved; resetReleaseCache(); }
+});

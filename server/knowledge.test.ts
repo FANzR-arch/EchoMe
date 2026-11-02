@@ -49,3 +49,16 @@ test('source changes preserve overrides; removed sources cannot be resurrected b
  const note={...override,key:'doc:approved:withdrawn',kind:'personal' as const};assert.equal(applyAssets([], [note]).length,0);
  const derived={...override,key:'doc:core-draft',kind:'personal' as const,sourceIds:['profile']};assert.equal(applyAssets([], [derived]).length,0);
 });
+test('hand-written entries: bare origins and missing bookkeeping fields are fine, mistakes are named',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'pai-snapshot-'));mkdirSync(join(dir,'website'));mkdirSync(join(dir,'approved'));
+ const write=(docs:unknown[])=>writeFileSync(join(dir,'website/snapshot.json'),JSON.stringify({schema:1,documents:docs}));
+ write([{id:'profile',title:'介绍',urls:['https://wang.example.com'],text:'你好'}]);
+ assert.deepEqual(loadDocuments(dir,false,false).map(d=>[d.kind,d.file,d.updated]),[['website','website/snapshot.json','']]);
+ write([{id:'project:a',title:'作品',kind:'website',urls:[],text:'x'}]);
+ assert.throws(()=>loadDocuments(dir,false,false),/"project:a": "urls" needs at least one/);
+ write([{id:'project:b',title:'作品',urls:['wang.example.com/b'],text:'x'}]);
+ assert.throws(()=>loadDocuments(dir,false,false),/"project:b": "urls" has an invalid link "wang.example.com\/b"/);
+ write([{id:'a',title:'t',urls:['https://a.example/'],text:'x'},{id:'a',title:'t',urls:['https://a.example/'],text:'y'}]);
+ assert.throws(()=>loadDocuments(dir,false,false),/two entries use "id": "a"/);
+ rmSync(dir,{recursive:true});
+});
