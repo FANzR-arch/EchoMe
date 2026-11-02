@@ -141,7 +141,7 @@
 - 聊天站地址和嵌入代码放在了哪里；
 - 他的后台：手机或电脑打开 `https://<项目>.vercel.app/owner`，输入他自己设的 `PAI_OWNER_PASSWORD`。「待处理」里是要他看的事（你整理的待确认资料、AI 没答上来的问题、想找他本人的访客），「对话」看访客对话、直接回复，「它知道什么」查看和修改 AI 用的资料。
 - 什么情况下会提醒他，怎么回复访客；
-- 以后想改资料，直接对你说“把 xx 加进 EchoMe 的资料”，你去改 `knowledge/` 并提交，Vercel 会自动重新部署；
+- 以后想改资料：在后台「它知道什么」直接改，或对接入 EchoMe 的 Grok Bot 说“把 xx 加进资料”；想让 AI 补充一批资料，按 docs/RESEARCH.md 整理；
 - 每天最多提醒 30 次（可以用 `PAI_NOTIFY_DAILY` 调整），模型按他自己的 API 用量计费。
 
 ## 出问题时
@@ -156,4 +156,7 @@
 | Vercel 构建失败，日志有 “EchoMe build check failed” | 按下一行的提示改 `owner.config.json` 或 `knowledge/` 里写错的那一条，再提交 |
 | 部署成功但 `/api/config` 返回 503 | 在 Vercel 的 Logs 里搜 `EchoMe could not start`，按后面的原因改环境变量或资料 |
 | 访客常看到“对话次数已经用完” | 设 `PAI_DAILY_LIMIT`（默认 100）后重新部署；接了 Supabase 先重新运行 `supabase/setup.sql` |
+| 网站上的聊天窗口显示“这里不能嵌入聊天” | 用户网站地址不在 `owner.config.json` 的 `embedOrigins` 里。加进去、提交，等重新部署 |
+| 回答“无法确认” | 资料里没有这件事。在后台「它知道什么」补一条，或按 docs/RESEARCH.md 整理 |
+| 后台提示“数据库需要更新” | 在 Supabase SQL Editor 重新运行 `supabase/setup.sql` 全部内容 |
 | MCP 返回 404 | 口令不对，或 `PAI_MCP_TOKEN` 少于 24 位，或改完没有重新部署 |

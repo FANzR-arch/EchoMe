@@ -11,7 +11,7 @@ import { call, when } from "@/lib/owner-client";
 import { useOwner, type Entry } from "./state";
 import { EditorDialog, type Editing } from "./editor";
 
-/** A Markdown file of "## title" sections becomes drafts; anything else is one new entry. README describes the format. */
+/** A Markdown file of "## title" sections becomes drafts; anything else is one new entry. docs/RESEARCH.md describes the format. */
 export function parseUpload(name: string, text: string): { title: string; text: string; urls: string[]; tier: "core" | "detail"; note?: string }[] {
   const body = text.replace(/^﻿/, "").replace(/\r\n/g, "\n");
   const sections = body.split(/^## /m).slice(1);
@@ -53,7 +53,7 @@ export default function OwnerKnowledge() {
     if (f.size > 1_000_000) return setNotice(t("文件太大了，请控制在 1 MB 以内。", "That file is too large; keep it under 1 MB."));
     const content = await f.text(), entries = parseUpload(f.name, content);
     if (entries.length === 1 && !/^## /m.test(content)) return setEditing({ kind: "entry", prefill: entries[0] });
-    if (!entries.length) return setNotice(t("文件里没有找到资料。格式见 README 的「资料文件格式」。", "No entries found. See the file format in the README."));
+    if (!entries.length) return setNotice(t("文件里没有找到资料。格式见仓库里 docs/RESEARCH.md 的「资料文件格式」。", "No entries found. See the file format in docs/RESEARCH.md."));
     const r = await call<{ drafted: number; message?: string }>("knowledge-import", { entries });
     if (r.status === 401) return signOut();
     setNotice(r.ok ? t(`已导入 ${r.data.drafted} 条，放在「待处理」里，逐条确认后才会上线。`, `Imported ${r.data.drafted} entries into the inbox. Nothing is live until you approve it.`) : r.data.message ?? t("导入失败，稍后再试。", "Import failed."));
