@@ -156,6 +156,8 @@ function Editor({ editing, view, back, done, signOut }: { editing: Editing; view
   const [urls, setUrls] = useState((start?.urls ?? []).join("\n")), [tier, setTier] = useState<"core" | "detail">(start?.tier ?? "detail");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const entry = editing.kind === "entry" ? editing.entry : undefined;
+  // Sized to the starting text, so short entries keep the buttons on a phone screen.
+  const [rows] = useState(() => editing.kind === "prompt" ? 14 : Math.min(8, Math.max(4, Math.ceil(text.length / 22) + 1)));
   const run = async (path: string, body: unknown, message: string) => {
     setBusy(true); setError("");
     const r = await call<{ message?: string }>(path, body);
@@ -185,7 +187,7 @@ function Editor({ editing, view, back, done, signOut }: { editing: Editing; view
           <input id="k-title" value={title} maxLength={400} onChange={e => setTitle(e.target.value)} required />
         </>)}
         <label htmlFor="k-text">{editing.kind === "prompt" ? t("全文（最多 4000 字）", "Full text (up to 4,000 characters)") : t("正文", "Text")}</label>
-        <textarea id="k-text" rows={editing.kind === "prompt" ? 14 : 10} value={text} onChange={e => setText(e.target.value)} required />
+        <textarea id="k-text" rows={rows} value={text} onChange={e => setText(e.target.value)} required />
         {editing.kind !== "prompt" && (<>
           <label htmlFor="k-urls">{t("来源链接（每行一个，完整的 https:// 地址，可不填）", "Source links (one per line, full https://, optional)")}</label>
           <textarea id="k-urls" rows={2} value={urls} onChange={e => setUrls(e.target.value)} />
