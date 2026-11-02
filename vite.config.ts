@@ -3,6 +3,7 @@ import { createWorkbench } from "./server/workbench-api.ts";
 import { createApi } from "./server/api.ts";
 import { owner as loadOwner, validateOwner } from "./server/owner.ts";
 import { LocalHandoff, createNotifier, notifyConfig } from "./server/handoff.ts";
+import { LocalKnowledgeEdits } from "./server/knowledge-edits.ts";
 import { getStore } from "./server/workbench-store.ts";
 import { existsSync, readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
@@ -19,7 +20,7 @@ export default defineConfig(({ mode }) => {
   // The admin site answers from the local draft knowledge, so owner tests see unpublished changes.
   const api = createApi({ mode: env.PAI_MODE || "mock", baseUrl: env.PAI_API_BASE_URL || "", model: env.PAI_MODEL || "", key: env.PAI_API_KEY || "", historySecret: env.PAI_HISTORY_SECRET || undefined, audit: true,intentRouting:true,
     // Local twin of the cloud hand-off, so the contact form, owner replies and MCP can be tried before deploying.
-    handoff: new LocalHandoff(getStore()), ...(env.PAI_NOTIFY_WEBHOOK_URL ? { notify: createNotifier(notifyConfig(env, "http://127.0.0.1:5174")) } : {}),
+    handoff: new LocalHandoff(getStore()), knowledgeEdits: new LocalKnowledgeEdits(getStore()), ...(env.PAI_NOTIFY_WEBHOOK_URL ? { notify: createNotifier(notifyConfig(env, "http://127.0.0.1:5174")) } : {}),
     mcpToken: (env.PAI_MCP_TOKEN?.length ?? 0) >= 24 ? env.PAI_MCP_TOKEN : undefined, ownerPassword: env.PAI_OWNER_PASSWORD || undefined });
   return {
     plugins: [

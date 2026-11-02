@@ -1,24 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, LogOut, RefreshCw, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, LogOut, RefreshCw, Send } from "lucide-react";
 import { usePreferences } from "@/lib/preferences";
 import { owner } from "@/lib/owner";
+import { call, when } from "@/lib/owner-client";
+import Knowledge from "./owner-knowledge";
 import "../owner.css";
 
-/** Owner page on the deployed site: password sign-in, then read and answer visitor conversations. Nothing here edits knowledge. */
+/** Owner page on the deployed site: password sign-in, then visitor conversations and the knowledge the assistant answers from. */
 type Session = { enabled: boolean; storage: boolean; signedIn: boolean };
 type Summary = { conversation: string; lastActive: string; lastQuestion: string; turns: number; ownerReplies: number };
 type Turn = { role: "visitor" | "assistant" | "owner" | "visitor_note"; text: string; created: string };
-type Answer = { id: string; created: string; question: string; answer: string };
 type Usage = { today?: number; limits: { daily: number } };
-
-async function call<T>(path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
-  try {
-    const r = await fetch("/api/owner/" + path, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
-  } catch {
-    return { ok: false, status: 0, data: {} as T & { error?: string } };
-  }
-}
 
 export default function OwnerPage() {
   const { t, locale } = usePreferences();
@@ -80,7 +72,7 @@ function SignOutButton({ onDone }: { onDone: () => void }) {
 
 function Workspace({ signOut }: { signOut: () => void }) {
   const { t } = usePreferences();
-  const [tab, setTab] = useState<"chats" | "answers">("chats");
+  const [tab, setTab] = useState<"chats" | "knowledge">("chats");
   const [open, setOpen] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   useEffect(() => { void call<Usage>("usage").then(r => { if (r.ok) setUsage(r.data); else if (r.status === 401) signOut(); }); }, [signOut]);
@@ -97,19 +89,14 @@ function Workspace({ signOut }: { signOut: () => void }) {
         <>
           <nav className="owner-tabs" role="tablist">
             <button role="tab" aria-selected={tab === "chats"} onClick={() => setTab("chats")}>{t("对话", "Chats")}</button>
-            <button role="tab" aria-selected={tab === "answers"} onClick={() => setTab("answers")}>{t("已保存的回答", "Saved answers")}</button>
+            <button role="tab" aria-selected={tab === "knowledge"} onClick={() => setTab("knowledge")}>{t("资料", "Knowledge")}</button>
           </nav>
-          {tab === "chats" ? <Conversations openChat={setOpen} signOut={signOut} /> : <Answers signOut={signOut} />}
+          {tab === "chats" ? <Conversations openChat={setOpen} signOut={signOut} /> : <Knowledge signOut={signOut} />}
         </>
       )}
     </main>
   );
 }
-
-const when = (iso: string, locale: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(locale === "en" ? "en" : "zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-};
 
 function Conversations({ openChat, signOut }: { openChat: (id: string) => void; signOut: () => void }) {
   const { t, locale } = usePreferences();
@@ -192,41 +179,6 @@ function Conversation({ id, back, signOut }: { id: string; back: () => void; sig
           <button type="submit" className="owner-primary" disabled={sending || !text.trim()}><Send size={16} />{sending ? t("发送中…", "Sending…") : t("发送", "Send")}</button>
         </form>
       )}
-    </section>
-  );
-}
-
-function Answers({ signOut }: { signOut: () => void }) {
-  const { t, locale } = usePreferences();
-  const [rows, setRows] = useState<Answer[] | null>(null), [failed, setFailed] = useState(false);
-  const refresh = useCallback(async () => {
-    const r = await call<{ answers: Answer[] }>("answers");
-    if (r.status === 401) return signOut();
-    if (r.ok) setRows(r.data.answers); else setFailed(true);
-  }, [signOut]);
-  useEffect(() => { void refresh(); }, [refresh]);
-  const forget = async (a: Answer) => {
-    if (!confirm(t(`删除这条回答？网站 AI 以后不会再用它。\n\n${a.question}`, `Delete this answer? The site assistant will stop using it.\n\n${a.question}`))) return;
-    await call("forget", { id: a.id });
-    void refresh();
-  };
-  return (
-    <section aria-label={t("已保存的回答", "Saved answers")}>
-      <p className="owner-muted">{t("你通过 AI 助手保存过的回答，网站 AI 会用它们回答类似问题。", "Answers you saved through your agent. The site assistant reuses them for similar questions.")}</p>
-      {failed && <p className="owner-error" role="alert">{t("读取失败，稍后再试。", "Couldn't load. Try again later.")}</p>}
-      {rows?.length === 0 && <p className="owner-muted">{t("还没有保存的回答。", "No saved answers yet.")}</p>}
-      <ul className="owner-list owner-answers">
-        {rows?.map(a => (
-          <li key={a.id}>
-            <div>
-              <span className="owner-question">{a.question}</span>
-              <p>{a.answer}</p>
-              <span className="owner-meta">{when(a.created, locale)}</span>
-            </div>
-            <button type="button" className="owner-ghost" aria-label={t("删除", "Delete")} onClick={() => void forget(a)}><Trash2 size={16} /></button>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

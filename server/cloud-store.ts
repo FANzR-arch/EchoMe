@@ -1,5 +1,6 @@
 /** Supabase service-role REST client; used only by server functions and localhost admin. */
 import { summarize, runsToTurns, type HandoffStore, type OwnerMessage, type SavedAnswer } from "./handoff.ts";
+import type { EditSource, EditValue, KnowledgeEdit, KnowledgeEditStore } from "./knowledge-edits.ts";
 /** Site-wide chat limits passed to pai_start, so every function instance enforces the same numbers. */
 type ChatLimits={daily:number;perMinute:number;concurrent:number};
 export function cloudConfigured(){return !!process.env.PAI_SUPABASE_URL&&!!process.env.PAI_SUPABASE_SECRET_KEY;}
@@ -16,6 +17,7 @@ export class CloudStore {
       let message='',code='';try{({message,code}=await response.json());}catch{}
       if(['DAILY_LIMIT','RATE_LIMIT','CONCURRENCY_LIMIT','INPUT_LIMIT'].includes(message))throw Error(message);
       if(code==='PGRST202')throw Error('FUNCTION_MISSING');
+      if(code==='PGRST205'||code==='42P01')throw Error('TABLE_MISSING');
       throw Error('CLOUD_UNAVAILABLE'); // Never expose provider response, keys or SQL.
     }
     const text=await response.text();return text?JSON.parse(text):null;
@@ -69,4 +71,16 @@ export class CloudHandoff implements HandoffStore {
     const [runs,notes]=await Promise.all([this.runs('&conversation=eq.'+c+'&order=created.asc&limit=100'),this.messages(conversation)]);
     return runs.length||notes.length?runsToTurns(runs,notes):undefined;
   }
+}
+
+/** Online knowledge edits on Supabase; same contract as LocalKnowledgeEdits. */
+export class CloudKnowledgeEdits implements KnowledgeEditStore {
+  private cloud:CloudStore;
+  constructor(cloud=new CloudStore()){this.cloud=cloud;}
+  list():Promise<KnowledgeEdit[]>{return this.cloud.request('pai_knowledge?select=id,target,status,value,source,note,updated&order=updated.desc&limit=1000');}
+  put(target:string,value:EditValue,source:EditSource):Promise<KnowledgeEdit>{return this.cloud.request('rpc/pai_knowledge_put','POST',{p_target:target,p_value:value,p_source:source});}
+  async remove(target:string){return (await this.cloud.request('pai_knowledge?target=eq.'+encodeURIComponent(target)+'&status=eq.live','DELETE')).length>0;}
+  async draft(target:string,value:EditValue,source:EditSource,note?:string):Promise<KnowledgeEdit>{return (await this.cloud.request('pai_knowledge?select=id,target,status,value,source,note,updated','POST',{target,status:'draft',value,source,note:note??null}))[0];}
+  async approve(id:string,value?:EditValue){if(!/^[0-9a-f-]{36}$/i.test(id))return undefined;return (await this.cloud.request('rpc/pai_knowledge_approve','POST',{p_id:id,p_value:value??null}))[0] as KnowledgeEdit|undefined;}
+  async discard(id:string){if(!/^[0-9a-f-]{36}$/i.test(id))return false;return (await this.cloud.request('pai_knowledge?id=eq.'+id+'&status=eq.draft','DELETE')).length>0;}
 }

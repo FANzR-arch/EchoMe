@@ -16,7 +16,7 @@ const setting=(name:string,fix:string)=>(e:unknown):never=>{throw Error(`${name}
 /** Everything the function needs before its first request. The Vercel build runs it too, so a bad setting fails the deploy. */
 export async function startup(env=process.env):Promise<Handler>{
   env.PAI_RUNTIME='cloud';
-  const [{createApi,limitsFromEnv},{CloudStore,CloudHandoff,cloudConfigured},{cloudRelease},{createNotifier,notifyConfig}]=await Promise.all([import('../server/api.ts'),import('../server/cloud-store.ts'),import('../server/release.ts'),import('../server/handoff.ts')]);
+  const [{createApi,limitsFromEnv},{CloudStore,CloudHandoff,CloudKnowledgeEdits,cloudConfigured},{cloudRelease},{createNotifier,notifyConfig}]=await Promise.all([import('../server/api.ts'),import('../server/cloud-store.ts'),import('../server/release.ts'),import('../server/handoff.ts')]);
   let origin='';try{origin=publicOrigin(env);}catch(e){setting('PAI_PUBLIC_ORIGIN','set it to the exact https:// address of this chat site, no path')(e);}
   const release=cloudRelease()!;
   const baseUrl=env.PAI_API_BASE_URL||'',model=env.PAI_MODEL||'',key=env.PAI_API_KEY||'';
@@ -32,7 +32,7 @@ export async function startup(env=process.env):Promise<Handler>{
   const ownerPassword=env.PAI_OWNER_PASSWORD||undefined;
   if(ownerPassword&&ownerPassword.length<12)throw Error('PAI_OWNER_PASSWORD: use at least 12 characters; the owner page is on the open internet');
   let notify;try{notify=notifyConfig(env,origin);}catch(e){setting('PAI_NOTIFY_WEBHOOK_URL','use the full https:// webhook address')(e);}
-  return createApi({mode:'real',baseUrl,model,key,historySecret:env.PAI_HISTORY_SECRET||undefined,audit,...(cloud?{auditStore:cloud,handoff:new CloudHandoff(cloud)}:{}),...(notify?{notify:createNotifier(notify)}:{}),mcpToken,ownerPassword,publicOrigin:origin,toolsVerified:release.provider.toolsVerified},fetch,policy);
+  return createApi({mode:'real',baseUrl,model,key,historySecret:env.PAI_HISTORY_SECRET||undefined,audit,...(cloud?{auditStore:cloud,handoff:new CloudHandoff(cloud),knowledgeEdits:new CloudKnowledgeEdits(cloud)}:{}),...(notify?{notify:createNotifier(notify)}:{}),mcpToken,ownerPassword,publicOrigin:origin,toolsVerified:release.provider.toolsVerified},fetch,policy);
 }
 export default async function entry(req:IncomingMessage,res:ServerResponse){
   res.setHeader('Cache-Control','no-store');
@@ -47,7 +47,7 @@ export default async function entry(req:IncomingMessage,res:ServerResponse){
   try {
     const url=new URL(req.url||'/', 'https://local.invalid'),route=url.searchParams.get('route');
     url.searchParams.delete('route');
-    if(['chat','config','replies','handoff','mcp'].includes(route??'')||/^owner\/[a-z]+$/.test(route??''))req.url='/api/'+route+url.search;
+    if(['chat','config','replies','handoff','mcp'].includes(route??'')||/^owner\/[a-z-]+$/.test(route??''))req.url='/api/'+route+url.search;
     const parsed=(req as IncomingMessage & {body?:unknown}).body;
     const incoming=parsed===undefined?req:Object.assign(Readable.from([typeof parsed==='string'?Buffer.from(parsed):Buffer.from(JSON.stringify(parsed))]),{headers:req.headers,method:req.method,url:req.url,complete:true}) as IncomingMessage;
     await handler(incoming,res,()=>{res.writeHead(404);res.end();});

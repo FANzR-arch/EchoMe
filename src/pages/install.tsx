@@ -37,10 +37,10 @@ export default function InstallPage() {
           {t("在你的仓库里改 owner.config.json 和 knowledge/ 文件夹，提交后 Vercel 会自动重新部署。", "Edit owner.config.json and the knowledge/ folder in your repository. Vercel redeploys on every commit.")}
         </li>
         <li>
-          <strong>{t("随时查看访客对话", "See visitor chats anywhere")}</strong>
+          <strong>{t("你的后台：对话和资料", "Your owner page: chats and knowledge")}</strong>
           {t("在 Vercel 环境变量里设 PAI_OWNER_PASSWORD（至少 12 位），手机或电脑打开 ", "Set PAI_OWNER_PASSWORD (12+ characters) in Vercel, then open ")}
           <a href="/owner">/owner</a>
-          {t(" 登录即可，还能直接回复访客。需要先接 Supabase。", " on any device to read chats and reply. Needs Supabase.")}
+          {t(" 登录：看对话、回复访客，也能直接改 AI 用的资料。需要先接 Supabase。", " on any device to read chats, reply and edit what the assistant knows. Needs Supabase.")}
         </li>
         <li>
           <strong>{t("先试一试", "Try it first")}</strong>

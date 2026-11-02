@@ -5,10 +5,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cloudRelease } from './release.ts';
 import { owner, knowledgeRoot } from './owner.ts';
+/** Published persona or rules, before any online edit. */
+export const basePrompt = (key: 'persona' | 'rules') => {
+  const release=cloudRelease();
+  return (release?release[key]:(getStore().asset(key)?.content ?? readFileSync(resolve(knowledgeRoot(), key + '.md'), 'utf8'))).trim();
+};
+let overrides: { persona?: string; rules?: string } = {};
+/** Online edits from the owner page or the owner's agent; the API refreshes them before each answer. */
+export const setPromptOverrides = (value: { persona?: string; rules?: string }) => { overrides = value; };
 const read = (name: string) => {
   const key=name === 'persona.md' ? 'persona' : 'rules';
-  const release=cloudRelease();
-  const text = (release?release[key]:(getStore().asset(key)?.content ?? readFileSync(resolve(knowledgeRoot(), name), 'utf8'))).trim();
+  const text = (overrides[key] ?? basePrompt(key)).trim();
   if (!text || text.length > 4000) throw new Error('Invalid knowledge prompt file: ' + name);
   return text;
 };

@@ -17,6 +17,9 @@ import { notifyReason, conversationId, type HandoffStore, type Reason, type Save
 import { createMcp, tokenMatches } from "./mcp.ts";
 import { owner } from "./owner.ts";
 import { createOwnerApi } from "./owner-api.ts";
+import { applyEdits, createKnowledgeService, promptOverrides, type KnowledgeEdit, type KnowledgeEditStore } from "./knowledge-edits.ts";
+import { basePrompt, setPromptOverrides } from "./prompts.ts";
+import { coreSize } from "./knowledge.ts";
 export const limits = { input: 2000, context: 36000, messages: 24, output: 600, perMinute: 20, concurrent: 4, daily: 100, timeoutMs: 45000, idleMs: 12000 };
 /** Site-wide visitor message limits the owner may tune; Supabase enforces the same numbers across instances. */
 export const limitRanges = { PAI_DAILY_LIMIT: ["daily", 100000], PAI_PER_MINUTE_LIMIT: ["perMinute", 600], PAI_CONCURRENT_LIMIT: ["concurrent", 50] } as const;
@@ -36,7 +39,9 @@ export type Config = { mode: string; baseUrl: string; model: string; key: string
   /** Owner hand-off: replies from the owner's agent, notices to it, and the MCP endpoint it calls. */
   handoff?:HandoffStore; notify?:(notice:{reason:Reason;conversation:string;visitor:string;assistant?:string;contact?:string})=>Promise<boolean>; mcpToken?:string;
   /** Opens the owner page at /owner; at least 12 characters. */
-  ownerPassword?:string };
+  ownerPassword?:string;
+  /** Online knowledge edits from the owner page and the owner's agent. */
+  knowledgeEdits?:KnowledgeEditStore };
 /** Prefix the visitor sees on the owner's own words; it is also what the model reads back as history. */
 export const ownerLabel=(locale:string)=>locale==='en'?`[${owner().name.en}, in person] `:`【${owner().name.zh}本人回复】`;
 /** A saved owner answer as a detail document: listed in the catalog, read in full on demand. */
@@ -66,9 +71,17 @@ export function trustHistory(messages: { role: string; content: string; sig?: st
 export function createApi(config: Config, fetcher: typeof fetch = fetch, policy = limits) {
   let active = 0, attempts: number[] = [], day = "", daily = 0;
   const signer = historySigner(historySecret(config.historySecret, config.key));
-  const mcp = config.handoff && config.mcpToken ? createMcp(config.handoff) : undefined;
+  // Online edits change rarely; a short cache spares a database call per question, and a change made here clears it at once.
+  let edited: { at: number; edits: KnowledgeEdit[] } | undefined;
+  const currentEdits = async () => {
+    if (!config.knowledgeEdits) return [];
+    if (!edited || Date.now() - edited.at >= 60000) { try { edited = { at: Date.now(), edits: await config.knowledgeEdits.list() }; } catch { edited = { at: Date.now(), edits: edited?.edits ?? [] }; } }
+    return edited.edits;
+  };
+  const knowledgeService = config.knowledgeEdits ? createKnowledgeService({ edits: config.knowledgeEdits, base: () => loadDocuments(), basePrompt, contextLimit: policy.context, onChange: () => { edited = undefined; } }) : undefined;
+  const mcp = config.handoff && config.mcpToken ? createMcp(config.handoff, { knowledge: knowledgeService }) : undefined;
   // Supabase counts across instances; without it this process's own count is the best there is.
-  const ownerApi = createOwnerApi({ password: config.ownerPassword, secret: historySecret(config.historySecret, config.key), handoff: config.handoff, secure: !!config.publicOrigin?.startsWith("https:"), limits: policy,
+  const ownerApi = createOwnerApi({ password: config.ownerPassword, secret: historySecret(config.historySecret, config.key), handoff: config.handoff, knowledge: knowledgeService, secure: !!config.publicOrigin?.startsWith("https:"), limits: policy,
     usageToday: async () => config.auditStore?.usageToday ? config.auditStore.usageToday() : day === new Date().toISOString().slice(0, 10) ? daily : 0 });
   let handoffs: number[] = [];
   // Saved answers change rarely; a short cache spares a database call per question. Failures fall back to the last list.
@@ -156,6 +169,8 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       req.setEncoding("utf8");
       for await (const chunk of req) { bytes += Buffer.byteLength(chunk); if (bytes > 65536) throw fail("INPUT_LIMIT"); raw += chunk.toString(); }
       let body; try { body = JSON.parse(raw); } catch { throw fail("INPUT_LIMIT"); }
+      const edits = await currentEdits();
+      setPromptOverrides(promptOverrides(edits));
       const received = validate(body);
       if(body.conversation !== undefined && (typeof body.conversation !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(body.conversation))) throw fail('INPUT_LIMIT');
       const conversation:string=body.conversation??'';
@@ -179,7 +194,9 @@ export function createApi(config: Config, fetcher: typeof fetch = fetch, policy 
       let knowledge;
       // Fewer saved answers rather than a failed reply when the catalog would overflow the context.
       const includeCatalog=config.intentRouting===false||route.knowledge;
-      try { let extra=includeCatalog?await savedDocuments():[];const base=loadDocuments();
+      try { let extra=includeCatalog?await savedDocuments():[];const published=loadDocuments(),merged=applyEdits(published,edits);
+        // Edits are checked when saved; should the library still overflow, answer from the published version.
+        const base=coreSize(merged)>4000?published:merged;
         for(;;){try{knowledge=buildKnowledge(messages,policy.context,[...base,...extra],includeCatalog);break;}catch(e){if(!(e instanceof Error&&e.message==='CONTEXT_LIMIT')||!extra.length)throw e;extra=extra.slice(0,Math.floor(extra.length/2));}}
       } catch (error) { if (error instanceof Error && error.message === "CONTEXT_LIMIT") throw error; throw fail("KNOWLEDGE_UNAVAILABLE"); }
       const sources = [...knowledge.sources,publicContactUrl()];

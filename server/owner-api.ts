@@ -1,12 +1,13 @@
-/** Owner page on the public site: one password from the environment, a signed cookie, and access to stored conversations.
- * Read and reply only: knowledge stays in the repository or the local workbench. */
+/** Owner page on the public site: one password from the environment, a signed cookie, then conversations, replies
+ * and the knowledge the assistant answers from (online edits, uploads and the review queue). */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { conversationId, sendOwnerReply, type HandoffStore } from './handoff.ts';
+import { ownerMessage, type KnowledgeService } from './knowledge-edits.ts';
 
 export const ownerPasswordMin = 12;
 export type OwnerConfig = {
-  password?: string; secret: string; handoff?: HandoffStore; secure: boolean;
+  password?: string; secret: string; handoff?: HandoffStore; knowledge?: KnowledgeService; secure: boolean;
   limits: { daily: number; perMinute: number; concurrent: number }; usageToday: () => Promise<number | undefined>;
   /** Login attempts per client and in total, per 15 minutes and per instance. */
   attempts?: { perClient: number; total: number };
@@ -32,9 +33,9 @@ export function createOwnerApi(config: OwnerConfig) {
     res.setHeader('Set-Cookie', `${cookie}=${value}; Path=/api/owner; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secure ? '; Secure' : ''}`);
   let failures: { at: number; client: string }[] = [];
   const client = (req: IncomingMessage) => String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket.remoteAddress || '?';
-  const readJson = async (req: IncomingMessage) => {
+  const readJson = async (req: IncomingMessage, max = 8192) => {
     let raw = ''; req.setEncoding('utf8');
-    for await (const chunk of req) { raw += chunk; if (raw.length > 8192) throw Error('INPUT_LIMIT'); }
+    for await (const chunk of req) { raw += chunk; if (raw.length > max) throw Error('INPUT_LIMIT'); }
     try { return JSON.parse(raw); } catch { throw Error('INPUT_LIMIT'); }
   };
 
@@ -56,6 +57,24 @@ export function createOwnerApi(config: OwnerConfig) {
       if (route === 'POST logout') { setCookie(res, '', 0); return json(200, { ok: true }); }
       if (!signedIn(req)) return json(401, { error: 'SIGNED_OUT' });
       if (route === 'GET usage') return json(200, { today: await config.usageToday().catch(() => undefined), limits: config.limits });
+      if (route.split(' ')[1].startsWith('knowledge')) {
+        const service = config.knowledge;
+        if (!service) return json(503, { error: 'NO_STORAGE' });
+        if (route === 'GET knowledge') return json(200, await service.view());
+        const body = await readJson(req, 262144), input = { title: body?.title, text: body?.text, urls: body?.urls, tier: body?.tier, hidden: body?.hidden };
+        if (route === 'POST knowledge-save') return json(200, { saved: await service.save(body?.id, input, 'owner') });
+        if (route === 'POST knowledge-restore') { await service.restore(body?.id); return json(200, { ok: true }); }
+        if (route === 'POST knowledge-approve') return json(200, { saved: await service.approve(body?.id, body?.edited ? input : undefined) });
+        if (route === 'POST knowledge-discard') { await service.discard(body?.id); return json(200, { ok: true }); }
+        if (route === 'POST knowledge-import') {
+          // An uploaded file of several entries: each becomes a draft for review, none goes live here.
+          const entries = Array.isArray(body?.entries) && body.entries.length && body.entries.length <= 50 ? body.entries : undefined;
+          if (!entries) return json(400, { error: 'INVALID', message: '一次可以导入 1–50 条资料' });
+          const drafted = [];
+          for (const e of entries) drafted.push(await service.draft(undefined, { title: e?.title, text: e?.text, urls: e?.urls, tier: e?.tier }, 'upload', e?.note));
+          return json(200, { drafted: drafted.length });
+        }
+      }
       const store = config.handoff;
       if (!store) return json(503, { error: 'NO_STORAGE' });
       if (route === 'GET conversations') return json(200, { conversations: await store.recent(50) });
@@ -76,6 +95,9 @@ export function createOwnerApi(config: OwnerConfig) {
       }
       return json(404, { error: 'NOT_FOUND' });
     } catch (e) {
+      const message = ownerMessage(e);
+      if (message) return json(400, { error: 'INVALID', message });
+      if (e instanceof Error && ['TABLE_MISSING', 'FUNCTION_MISSING'].includes(e.message)) return json(503, { error: 'UPGRADE_NEEDED' });
       return json(e instanceof Error && e.message === 'INPUT_LIMIT' ? 400 : 503, { error: e instanceof Error && e.message === 'INPUT_LIMIT' ? 'INPUT_LIMIT' : 'CLOUD_UNAVAILABLE' });
     }
   };
