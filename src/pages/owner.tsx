@@ -34,7 +34,7 @@ export default function OwnerPage() {
   if (session === "offline") return <Card title={t("连不上服务器", "Can't reach the server")}><p className="adm-hint">{t("检查网络后刷新页面。", "Check your connection and reload.")}</p></Card>;
   if (!session.enabled) return <Card title={t("后台还没开启", "The owner page is off")}><p className="adm-hint">{t("在 Vercel 的环境变量里加 PAI_OWNER_PASSWORD（至少 12 个字符），重新部署后用这个密码登录。", "Add PAI_OWNER_PASSWORD (at least 12 characters) in Vercel, redeploy, then sign in with it.")}</p></Card>;
   if (!session.signedIn) return <SignIn onDone={load} />;
-  if (!session.storage) return <Card title={t("还没有对话存档", "No conversation archive yet")}><p className="adm-hint">{t("对话和资料修改存在 Supabase 里。按 README 第四步建好 Supabase，在 Vercel 加上 PAI_SUPABASE_URL 和 PAI_SUPABASE_SECRET_KEY 后重新部署。", "Conversations and knowledge edits live in Supabase. Connect it (README step four) and redeploy.")}</p></Card>;
+  if (!session.storage) return <Card title={t("还没有对话存档", "No conversation archive yet")}><p className="adm-hint">{t("对话和资料修改存在 Supabase 里。请让你的 AI 按 AGENT-SETUP.md 第 4、5 步接好 Supabase（PAI_SUPABASE_URL、PAI_SUPABASE_SECRET_KEY）并重新部署。", "Conversations and knowledge edits live in Supabase. Ask your AI to connect it (AGENT-SETUP.md steps 4–5) and redeploy.")}</p></Card>;
   return (
     <OwnerProvider signOut={load}>
       <Routes>

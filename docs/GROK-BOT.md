@@ -77,8 +77,8 @@ Vercel 请求授权时，只选你的 EchoMe 那一个项目，不要勾“Acces
 
 ## 准备
 
-- 已经部署好的 EchoMe（见 README 的三步）。
-- **Supabase**：存你的回复，必须接。按 README 第四步建好（在 SQL Editor 里运行 `supabase/setup.sql`）。接好后也能用网页后台 `/owner` 看对话、回复访客。
+- 已经部署好的 EchoMe（见 README「使用方法」第一步）。
+- **Supabase**：存你的回复，必须接。README「使用方法」第一步的安装提示词会一并建好（运行 `supabase/setup.sql`）。接好后也能用网页后台 `/owner` 看对话、回复访客。
 - Grok Bot（X Premium 及以上订阅自带）。
 
 ## 第一步：在 Grok Bot 里建一个“访客接待”
